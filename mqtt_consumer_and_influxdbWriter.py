@@ -8,7 +8,7 @@ import base64
 influxdb_url = "http://localhost:8086"
 influxdb_token = "qhYr-5pT9wSBB4_eou5bWqdZcjei3fJFzPMOFP7zFli1he5VDis_oB6CdAVVTRpgR7o1wJqxRyq6WzXIIl0y1g=="  # The API token
 influxdb_org = "TU Chemnitz"
-influxdb_bucket = "lorawan_mqtt_collector"
+influxdb_bucket = "lora_data_collector"
 
 # MQTT settings
 mqtt_broker = "134.109.5.110"
@@ -23,16 +23,16 @@ def write_to_influxdb(line):
     print('Authenticating to InfluxDB')
     client = influxdb_client.InfluxDBClient(url=influxdb_url, token=influxdb_token, org=influxdb_org)
     print('Authentication successful. Writing DB via API')
-    # try:
-    #     write_api = client.write_api(write_options=SYNCHRONOUS)
-    #     write_api.write(influxdb_bucket, influxdb_org, line)
-    #     print('Write successful')
+    try:
+        write_api = client.write_api(write_options=SYNCHRONOUS)
+        write_api.write(influxdb_bucket, influxdb_org, line)
+        print('Write successful')
 
-    # except:
-    #     print('Error writing to DB')
-    write_api = client.write_api(write_options=SYNCHRONOUS)
-    write_api.write(influxdb_bucket, influxdb_org, line)
-    print('Write successful')
+    except:
+        print('Error writing to DB')
+    # write_api = client.write_api(write_options=SYNCHRONOUS)
+    # write_api.write(influxdb_bucket, influxdb_org, line)
+    # print('Write successful')
 
 
 def format_GW_data(data):
