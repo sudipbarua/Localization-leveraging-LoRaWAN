@@ -3,7 +3,7 @@ from influxdb_client import InfluxDBClient
 import pandas as pd
 
 # InfluxDB credentials: bucket, organization, and token.
-bucket = "lorawan_mqtt_collector"
+bucket = "lora_data_collector"
 org = "TU Chemnitz"
 token = "qhYr-5pT9wSBB4_eou5bWqdZcjei3fJFzPMOFP7zFli1he5VDis_oB6CdAVVTRpgR7o1wJqxRyq6WzXIIl0y1g=="
 url="http://localhost:8086"
@@ -21,12 +21,10 @@ query_api = client.query_api()
 # '''
 
 query = '''
-from(bucket: "lorawan_mqtt_collector")
-|> range(start: -1h)
+from(bucket: "lora_data_collector")
+|> range(start: -2h)
 |> filter(fn: (r) => r["_measurement"] == "Uplink_data")
-|> filter(fn: (r) => r["_field"] == "data_size")
 '''
-
 
 print(query)
 # Pass the query() method two named parameters: org and query.
