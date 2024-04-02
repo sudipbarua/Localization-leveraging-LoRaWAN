@@ -56,28 +56,47 @@ def format_uplink_data(data):
     # Tags are the columns in the raw table
     tags = ["tenantId", "tenantName", "applicationId", "applicationName", "deviceProfileId", "deviceProfileName", "deviceName", "devEui", "deviceClassEnabled"]
     tag_set = ",".join(f"{tag}={data['deviceInfo'][tag]}" for tag in tags)
+    tag_set += f",Time={data['time']},nsTime={data['rxInfo'][0]['nsTime']},gatewayId={data['rxInfo'][0]['gatewayId']},crcStatus={data['rxInfo'][0]['crcStatus']}"
+    tag_set += f",codeRate={data['txInfo']['modulation']['lora']['codeRate']},devAddr={data['devAddr']}"
 
-    tags_2 = ["devAddr", "adr", "dr", "fCnt", "fPort", "confirmed"]
-    tag_set_2 = ",".join(f"{tag}={data[tag]}" for tag in tags_2)
-    # Preprocess the data field value. We consider the data size in bytes  
-    decoded_data = base64.b64decode(data["data"])
-    data_size = len(decoded_data)
+    # General fields
+    fields = ["adr", "dr", "fCnt", "fPort", "confirmed", "data"]
+    field_set = ""
+    for field in fields:
+        # If field_set is not empty, add a comma before the next field=value pair
+        if field_set:
+            field_set += ","
+        # Calculating the size of the payload in bytes
+        if field=="data":
+            decoded_data = base64.b64decode(data[field])
+            data_size = len(decoded_data)
+            field_set += f"data_size={data_size}"
+        elif field =="adr" or field == "confirmed":
+            # Boolean values are not handled properly as values by the line protocol. Thus we convert them to binary True=1, False=0 
+            if data[field]== True:
+                field_set += f"{field}=1"
+            else:
+                field_set += f"{field}=0"
+        else:
+            field_set += f"{field}={data[field]}"
 
-    # Add rxInfo and txInfo as tags
-    # The key 'context' is ignored since it contained unsupported charecters like '=' equal sign
-    rxInfo_tag_set = ",".join(f"rxInfo_{key}={value}" for key, value in data['rxInfo'][0].items() if isinstance(value, (str, int, float)) and key != 'context')
-    txInfo_tag_set = ",".join(f"txInfo_{key}={value}" for key, value in data['txInfo'].items() if isinstance(value, (str, int, float)))
 
-    modulation_tag_set = ",".join(f"txInfo_modulation_{key}={value}" for key, value in data['txInfo']['modulation']['lora'].items())
-    location_tag_set = ",".join(f"rxInfo_location_{key}={value}" for key, value in data['rxInfo'][0]['location'].items())  
+    ignored_keys = ['context', 'nsTime', 'timeSinceGpsEpoch', 'crcStatus', 'gatewayId']
+
+    # Add rxInfo and txInfo as fields
+    rxInfo_field_set = ",".join(f"rxInfo_{key}={value}" for key, value in data['rxInfo'][0].items() if isinstance(value, (str, int, float)) and key not in ignored_keys)
+    txInfo_field_set = ",".join(f"txInfo_{key}={value}" for key, value in data['txInfo'].items() if isinstance(value, (str, int, float)))
+
+    modulation_field_set = ",".join(f"txInfo_modulation_{key}={value}" for key, value in data['txInfo']['modulation']['lora'].items() if key != 'codeRate')
+    location_field_set = ",".join(f"rxInfo_location_{key}={value}" for key, value in data['rxInfo'][0]['location'].items())
 
     line = (
-        f"Uplink_data,test_data=tuc_lab {tag_set},{tag_set_2}," 
-        f"{rxInfo_tag_set},"
-        f"{txInfo_tag_set},"
-        f"{modulation_tag_set},"
-        f"{location_tag_set},"
-        f"data_size={data_size}"
+        f"Uplink_data,{tag_set} " 
+        f"{field_set},"
+        f"{rxInfo_field_set},"
+        f"{txInfo_field_set},"
+        f"{modulation_field_set},"
+        f"{location_field_set}"
     )
     return line 
 
