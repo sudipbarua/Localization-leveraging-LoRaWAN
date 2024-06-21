@@ -43,6 +43,7 @@ def data_cleaning(ds, wathear_data=True):
 
     print('Size before cleaning: ',ds.shape) # size before...
     ds = ds.drop(indices) # dropping all entries with fewer than 3 receiving gateways
+    ds.reset_index(drop=True, inplace=True)  # Reset the index
     print('Size after cleaning: ',ds.shape) # ... and size after the dropping
 
 
@@ -51,7 +52,7 @@ def data_cleaning(ds, wathear_data=True):
     # x1 = ds[columns[0:68]] #features (RSS receptions)
     # x2 = ds[columns[69:71]] # SF and HDOP
     # x3 = ds[columns[75:]] #weather data  
-    x1 = ds[columns[0:72]] #features (RSS receptions)
+    x1 = ds[columns[0:73]] #features (RSS receptions with timestamps)
     x2 = ds[columns[73:75]] # SF and HDOP
     x3 = ds[columns[79:]] #weather data  
     if wathear_data==True:
