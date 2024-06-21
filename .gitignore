@@ -161,5 +161,10 @@ cython_debug/
 
 *.xlsx
 
+
 public_data_analysis/sample_weather_data.csv
-RSSI_fingerprinting/antwerp_ds_weather-data.csv
+RSSI_fingerprinting/*.csv
+public_data_analysis/*.json
+RSSI_fingerprinting/data/*.csv
+RSSI_fingerprinting/data/*.json
+RSSI_fingerprinting/files/*.csv
