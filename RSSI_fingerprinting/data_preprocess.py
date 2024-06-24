@@ -2,11 +2,36 @@ from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import MinMaxScaler, FunctionTransformer
 import pandas as pd
 
+def get_row_raw_gw_info(df, raw_ds):
+    # Create a dictionary to map timestamps to row IDs in raw_ds
+    timestamp_to_row_id = {}
 
-def data_spliting(x_scaled, y, random_state, train_size):
+    for id, row in raw_ds.iterrows():
+        for gateway in row['gateways']:
+            timestamp = gateway['rx_time']['time']
+            if timestamp not in timestamp_to_row_id:
+                timestamp_to_row_id[timestamp] = []
+            timestamp_to_row_id[timestamp].append(id)
+
+    # Initialize the gw_info column in df
+    df['gw_info_row_id'] = 0
+
+    # For each timestamp in df, find the corresponding row ID in raw_ds
+    for i, t in df.iterrows():
+        timestamp = t['RX Time']
+        if timestamp in timestamp_to_row_id:
+            # If there are multiple matches, you may need to decide how to handle them.
+            # Here, we'll just take the first match.
+            df.loc[i, 'gw_info_row_id'] = timestamp_to_row_id[timestamp][0]
+            print(f'row number {timestamp_to_row_id[timestamp][0]}')
+    
+    return df
+
+
+def data_spliting(x_scaled, y, random_state, train_size, val_size):
     # Train, validation, test set splitting, (70%/15%/15%)
     x_train, x_test_val, y_train, y_test_val = train_test_split(x_scaled, y.values, train_size=train_size, random_state=random_state)
-    x_val, x_test, y_val, y_test = train_test_split(x_test_val, y_test_val, test_size=0.5, random_state=random_state)
+    x_val, x_test, y_val, y_test = train_test_split(x_test_val, y_test_val, test_size=(1-val_size), random_state=random_state)
     print(f'Training shape:      {x_train.shape}')
     print(f'Test shape:          {x_test.shape}')
     print(f'Validation shape:    {x_val.shape}')
@@ -25,6 +50,8 @@ def scaling(scaler, x):
     return x_scaled_df
 
 def data_cleaning(ds, wathear_data=True):
+    # Removing duplicates
+    ds = ds.drop_duplicates()
     #### Remove entries with less than 3 gateways #### 
     columns = ds.columns
     # x = ds[columns[0:68]]  # Get basestations' RSS readings
@@ -58,10 +85,19 @@ def data_cleaning(ds, wathear_data=True):
     if wathear_data==True:
         x = pd.concat([x1, x2, x3], axis=1)
     else:
-        x = x1
+        x = pd.concat([x1, ds['gw_info_row_id']], axis=1)
 
     y = ds[columns[75:77]] # target (locations) 
     
     return x, y 
 
+
+def main():
+    # collecting the row number of the matched data sample based on the TOA timestamp info in the gateways subsection
+    ds = pd.read_csv('data/antwerp_ds_weather-data_2019.csv', index_col=0) 
+    ds_raw = pd.read_json('data/lorawan_antwerp_2019_dataset.json')
+    ds_row_ref = get_row_raw_gw_info(ds, ds_raw)
+    ds_row_ref.to_csv('data/antwerp_combo_raw_ref.csv')
    
+if __name__=='__main__':
+    main()
