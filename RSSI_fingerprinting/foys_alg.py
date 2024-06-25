@@ -31,7 +31,7 @@ def tdoa_position_estimation(initial_coords, gateway_coords, tdoa_values, max_it
         z = np.zeros(num_measurements)
         
         for k in range(num_measurements):
-            i, j = tdoa_values[k, 0], tdoa_values[k, 1]
+            i, j = int(tdoa_values[k, 0]), int(tdoa_values[k, 1])
             measured_tdoa = tdoa_values[k, 2]
             
             d_i = np.linalg.norm(estimated_coords - gateway_coords[i])
@@ -54,22 +54,40 @@ def tdoa_position_estimation(initial_coords, gateway_coords, tdoa_values, max_it
     
     return estimated_coords.tolist()
 
-# Example usage:
-initial_coords = [0.0, 0.0]
+# # Example usage:
+# initial_coords = [0.0, 0.0]
+# gateway_coords = [
+#     [0.0, 0.0],
+#     [1.0, 0.0],
+#     [0.0, 1.0],
+#     [1.0, 1.0]
+# ]
+# tdoa_values = [
+#     [0, 1, 0.5],
+#     [0, 2, 0.3],
+#     [0, 3, 0.4],
+#     [1, 2, -0.2],
+#     [1, 3, -0.1],
+#     [2, 3, 0.1]
+# ]
+
+initial_coords = [1313.571538, -6321.141998]
+
+# Receiving gateways: ['FF0178DF', '080E0116', '08060716', 'FF01753E']
+# Time of arrivals: ['2018-12-31T08:49:13.832705509+01:00', '2018-12-31T08:49:13.944+01:00', '2018-12-31T08:49:13.949+01:00', '2018-12-31T08:49:13.832710481+01:00']
+
 gateway_coords = [
-    [0.0, 0.0],
-    [1.0, 0.0],
-    [0.0, 1.0],
-    [1.0, 1.0]
-]
-tdoa_values = [
-    [0, 1, 0.5],
-    [0, 2, 0.3],
-    [0, 3, 0.4],
-    [1, 2, -0.2],
-    [1, 3, -0.1],
-    [2, 3, 0.1]
-]
+    [ 1.73193814e+03, -6.53513544e+03],
+    [ 6.97356078e+02, -7.32894077e+03],
+    [ 1.94347883e+03, -6.10173267e+03],
+    [ 2.51986817e+03, -7.02576446e+03]]
+
+tdoa_values = [[0, 1, -0.11129449100000001*3e8],
+ [0, 2, -0.11629449100000001*3e8],
+ [0, 3, -4.972e-06*3e8],
+ [1, 2, -0.005*3e8],
+ [1, 3, 0.111289519*3e8],
+ [2, 3, 0.11628951900000001*3e8]]
 
 estimated_coords = tdoa_position_estimation(initial_coords, gateway_coords, tdoa_values)
 print("Estimated Coordinates:", estimated_coords)
