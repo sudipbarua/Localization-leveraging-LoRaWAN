@@ -1,6 +1,10 @@
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import MinMaxScaler, FunctionTransformer
 import pandas as pd
+from itertools import combinations
+import numpy as np
+import pymap3d as pm 
+
 
 def get_row_raw_gw_info(df, raw_ds):
     # Create a dictionary to map timestamps to row IDs in raw_ds
@@ -99,5 +103,58 @@ def main():
     ds_row_ref = get_row_raw_gw_info(ds, ds_raw)
     ds_row_ref.to_csv('data/antwerp_combo_raw_ref.csv')
    
+
+
+# Collecting GW coordinates
+def get_gw_cord_tdoa(index, ds_json, gw_loc, ref_pos):
+    """
+    Inputs:
+        - index: This is the reference index of the raw data json file 'RSSI_fingerprinting\data\lorawan_antwerp_2019_dataset.json'
+                 from which we are going to take the GW meta data
+        - ds_json: Raw data file read by pandas as dataframe 
+        - gw_loc: Gateway locations from the raw data file
+        - ref_pos: Reference position for geodetic to ENU conversion
+    """
+    gw_ids = []
+    toa = []
+    gw_meta = ds_json.loc[index, ['gateways']]
+    for gws in gw_meta:
+        for gw in gws:
+            gw_ids.append(gw['id'])
+            toa.append(gw['rx_time']['time'])
+
+    print(f'Receiving gateways: {gw_ids}')
+    print(f'Time of arrivals: {toa}')
+    
+    gw_pos = []
+    gw_lat_lon = []
+
+    for i in gw_ids:
+        gw = gw_loc[i]
+        x, y, z = pm.geodetic2enu(lat=gw['latitude'], lon=gw['longitude'], h=0, **ref_pos)
+        gw_lat_lon.append([gw['latitude'], gw['longitude']])
+        gw_pos.append([x,y,z])
+    gw_positions = np.asarray(gw_pos)
+
+    print('Gateway coordinates (enu): ')
+    print(gw_positions)
+
+    # Calulating TDoA value
+    # We use the pandas timestamp method in this case, 
+    # because it is the only one that can handle precision upto nano second  
+
+    tdoa = []
+    # Generate unique pairs using combinations
+    for i, j in combinations(range(len(toa)), 2):
+        diff = pd.Timestamp(toa[i]).value - pd.Timestamp(toa[j]).value
+        diff_seconds = diff*1e-9
+        tdoa.append([i, j, diff_seconds])
+    print(f'Time difference of arrival: {tdoa}')
+
+    return toa, gw_positions, tdoa, gw_lat_lon
+
+
+
+
 if __name__=='__main__':
     main()
