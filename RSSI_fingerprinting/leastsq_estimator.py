@@ -3,7 +3,7 @@ import numpy as np
 import scipy.optimize as opt
 import pymap3d as pm
 import pandas as pd
-from data_preprocess import get_gw_cord_tdoa
+from data_preprocess import DataPreprocess
 
 
 class Least_square_estimator:
@@ -57,7 +57,7 @@ class Least_square_estimator:
             init_pos = [row['x_i'], row['y_i']]
 
             # Now we collect the TOA and gateway lat-lon and calculate the TDoA and positions  
-            toa, gw_pos, _, gw_lat_lon = get_gw_cord_tdoa(row['gw_ref'], ds_json, gateway_locations, reference_position)
+            toa, gw_pos, _, gw_lat_lon = DataPreprocess().get_gw_cord_tdoa(row['gw_ref'], ds_json, gateway_locations, reference_position)
             
             # The timestamps or the TOAs are string values so we convert them to Pandas tmestamp object
             ts = np.asarray([pd.Timestamp(t) for t in toa])
@@ -87,13 +87,13 @@ class Least_square_estimator:
             
             if plot==True:
                 # map plot for individual predictions and estimations 
-                self.map_plot(result)
+                self.map_plot(result, gw_ref=row['gw_ref'])
             data.loc[idx, 'lat_est'] = lat_est
             data.loc[idx, 'lon_est'] = lon_est
         return data
 
 
-    def map_plot(self, result):
+    def map_plot(self, result, gw_ref):
 
         fig = px.scatter_mapbox(result, 
                                 lat='lat', 
@@ -107,8 +107,8 @@ class Least_square_estimator:
 
         fig.update_layout(mapbox_style="open-street-map")
         fig.update_layout(margin={"r":0,"t":0,"l":0,"b":0})
-        fig.show()
-        # fig.write_image(f"fig/map_plots/gw{gw_ref}.png")  # Saving image 
+        # fig.show()
+        fig.write_image(f"fig/map_plots/gw{gw_ref}.jpg")  # Saving image
 
 
 def main():

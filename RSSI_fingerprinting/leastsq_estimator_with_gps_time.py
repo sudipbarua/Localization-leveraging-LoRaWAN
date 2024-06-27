@@ -1,15 +1,15 @@
-import plotly.express as px
 import numpy as np
 import scipy.optimize as opt
-import pymap3d as pm
 import pandas as pd
-from data_preprocess import get_gw_cord_tdoa
+from data_preprocess import DataPreprocess
 from leastsq_estimator import Least_square_estimator
+import pymap3d as pm
 
 
 class Least_square_estimator_gps_timer(Least_square_estimator):
     def __init__(self):
         # Speed of propagation (m/s)
+        super().__init__()
         self.speed = 3e8
 
     def estimate(self, data, reference_position, ds_json, gateway_locations, plot=False):
@@ -20,70 +20,57 @@ class Least_square_estimator_gps_timer(Least_square_estimator):
             init_pos = [row['x_i'], row['y_i']]
 
             # Now we collect the TOA and gateway lat-lon and calculate the TDoA and positions  
-            toa, gw_pos, _, gw_lat_lon = get_gw_cord_tdoa(row['gw_ref'], ds_json, gateway_locations, reference_position)
-            
-            # The timestamps or the TOAs are string values so we convert them to Pandas tmestamp object
-            ts = np.asarray([pd.Timestamp(t) for t in toa])
-            # We also create a list called measurements 
-            # This contains the recieving gateway positions and the TOA 
-            measurements = np.c_[gw_pos[:, [0,2]], ts]
+            toa, gw_pos, _, gw_lat_lon = DataPreprocess().get_gw_cord_tdoa(row['gw_ref'], ds_json, gateway_locations, reference_position)
 
-            speeds = [self.speed] * len(measurements)
+            if len(gw_pos) >= 3:
+                # The timestamps or the TOAs are string values so we convert them to Pandas tmestamp object
+                ts = np.asarray([pd.Timestamp(t) for t in toa])
+                # We also create a list called measurements
+                # This contains the recieving gateway positions and the TOA
+                measurements = np.c_[gw_pos[:, [0,2]], ts]
 
-            # Define functions and jacobian
-            F = self.function(measurements, speeds)
-            J = self.jacobian(measurements, speeds)
+                speeds = [self.speed] * len(measurements)
 
-            # Perform least squares optimization
-            x, y = opt.leastsq(func=F, x0=init_pos, Dfun=J)
+                # Define functions and jacobian
+                F = self.function(measurements, speeds)
+                J = self.jacobian(measurements, speeds)
 
-            print(f"Optimized (x, y): ({x}, {y})")
-            # Estimated lat-lon 
-            lat_est, lon_est, _ = pm.enu2geodetic(e=x[0], n=x[1], u=0, **reference_position)
+                # Perform least squares optimization
+                x, y = opt.leastsq(func=F, x0=init_pos, Dfun=J)
 
-            # Creating a list of results for plotting in the map 
-            result = {
-                'lat': [row['lat'], lat_est, row['pred_lat']] + [gw_lat_lon[i][0] for i in range(len(gw_lat_lon))],
-                'lon': [row['lon'], lon_est, row['pred_lon']] + [gw_lat_lon[i][1] for i in range(len(gw_lat_lon))],
-                'cat': ['Actual Pos', 'Estimated Pos', 'ML Predicted Pos'] + [f'GW Positions' for i in range(len(gw_lat_lon))]
-            }
-            
-            if plot==True:
-                # map plot for individual predictions and estimations 
-                self.map_plot(result)
-            data.loc[idx, 'lat_est'] = lat_est
-            data.loc[idx, 'lon_est'] = lon_est
+                print(f"Optimized (x, y): ({x}, {y})")
+                # Estimated lat-lon
+                lat_est, lon_est, _ = pm.enu2geodetic(e=x[0], n=x[1], u=0, **reference_position)
+
+                # Creating a list of results for plotting in the map
+                result = {
+                    'lat': [row['lat'], lat_est, row['pred_lat']] + [gw_lat_lon[i][0] for i in range(len(gw_lat_lon))],
+                    'lon': [row['lon'], lon_est, row['pred_lon']] + [gw_lat_lon[i][1] for i in range(len(gw_lat_lon))],
+                    'cat': ['Actual Pos', 'Estimated Pos', 'ML Predicted Pos'] + [f'GW Positions' for i in range(len(gw_lat_lon))]
+                }
+
+                if plot==True:
+                    # map plot for individual predictions and estimations
+                    self.map_plot(result, gw_ref=row['gw_ref'])
+                data.loc[idx, 'lat_est'] = lat_est
+                data.loc[idx, 'lon_est'] = lon_est
+
+            else:
+                print('Position cannot be resolved. Not enough gws to for TDoA measurement')
+                data.loc[idx, 'lat_est'] = 'Position unresolved'
+                data.loc[idx, 'lon_est'] = 'Position unresolved'
         return data
-
-
-    def map_plot(self, result):
-
-        fig = px.scatter_mapbox(result, 
-                                lat='lat', 
-                                lon='lon',
-                                color='cat', 
-                                zoom=11, 
-                                height=800,
-                                width=1400)
-        # Update the marker size
-        fig.update_traces(marker=dict(size=15))  # Adjust the size value as needed
-
-        fig.update_layout(mapbox_style="open-street-map")
-        fig.update_layout(margin={"r":0,"t":0,"l":0,"b":0})
-        fig.show()
-        # fig.write_image(f"fig/map_plots/gw{gw_ref}.png")  # Saving image 
 
 
 def main():
     ##################### Testing script ###########################
-    ds_json = pd.read_json('RSSI_fingerprinting/data/lorawan_antwerp_2019_dataset.json')
-    gw_loc = pd.read_json('RSSI_fingerprinting/data/lorawan_antwerp_gateway_locations.json')
+    ds_json = pd.read_json('data/lorawan_antwerp_2019_dataset.json')
+    gw_loc = pd.read_json('data/lorawan_antwerp_gateway_locations.json')
 
     # Loading initial position coordinates form machine learning predictions
-    pos_pred_rssi = pd.read_csv('RSSI_fingerprinting/files/position_pred_RSSI.csv', index_col=0)
-    pos_pred_comb = pd.read_csv('RSSI_fingerprinting/files/position_pred_weather-comb.csv', index_col=0)
+    pos_pred_rssi = pd.read_csv('files/position_pred_RSSI.csv', index_col=0)
+    pos_pred_comb = pd.read_csv('files/position_pred_weather-comb.csv', index_col=0)
 
-    import pymap3d as pm 
 
     ref_pos = {'lat0': 51.260644,
             'lon0': 4.370656,
@@ -94,7 +81,7 @@ def main():
 
     pos_pred_comb['x'], pos_pred_comb['y'], pos_pred_comb['z'] = pm.geodetic2enu(lat=pos_pred_comb['lat'], lon=pos_pred_comb['lon'], h=0, **ref_pos)
     pos_pred_comb['x_i'], pos_pred_comb['y_i'], pos_pred_comb['z_i'] = pm.geodetic2enu(lat=pos_pred_comb['pred_lat'], lon=pos_pred_comb['pred_lon'], h=0, **ref_pos)
-    estimator = Least_square_estimator()
+    estimator = Least_square_estimator_gps_timer()
     # est_rssi = estimator.estimate(data=pos_pred_rssi, 
     #                              reference_position=ref_pos, 
     #                              ds_json=ds_json, 
