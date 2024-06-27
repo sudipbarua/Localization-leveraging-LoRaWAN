@@ -4,50 +4,13 @@ import scipy.optimize as opt
 import pymap3d as pm
 import pandas as pd
 from data_preprocess import get_gw_cord_tdoa
+from leastsq_estimator import Least_square_estimator
 
 
-class Least_square_estimator:
+class Least_square_estimator_gps_timer(Least_square_estimator):
     def __init__(self):
         # Speed of propagation (m/s)
         self.speed = 3e8
-
-    # method to generate the residuals for all hyperbolae
-    def function(self, measurements, speeds):
-        def fn(args):
-            x, y = args[:2]  # Extract x and y coordinates from args
-            residuals = []
-            for i in range(len(measurements)):
-                xi, yi, ti = measurements[i]
-                x0 = measurements[0][0]
-                y0 = measurements[0][1]
-                # We use the pandas timestamp method in this case, 
-                # because it is the only one that can handle precision upto nano second
-                diff_seconds = (pd.Timestamp(ti).value - pd.Timestamp(measurements[0][2]).value) * 1e-9  # the values are converted to seconds
-                di = diff_seconds * speeds[i]
-                ai = np.sqrt((x - xi)**2 + (y - yi)**2) - np.sqrt((x - x0)**2 + (y - y0)**2) - abs(di)
-                residuals.append(ai)
-            return residuals
-        return fn
-
-    # Function to generate the Jacobian matrix
-    def jacobian(self, measurements, speeds):
-        def fn(args):
-            x, y = args[:2]  # Extract x and y coordinates from args
-            jac = []
-            for i in range(len(measurements)):
-                xi, yi, ti = measurements[i]
-                x0 = measurements[0][0]
-                y0 = measurements[0][1]
-                # We use the pandas timestamp method in this case, 
-                # because it is the only one that can handle precision upto nano second
-                diff_seconds = (pd.Timestamp(ti).value - pd.Timestamp(measurements[0][2]).value) * 1e-9  # the values are converted to seconds
-                di = diff_seconds * speeds[i]
-                adx = (x - xi) / np.sqrt((x - xi)**2 + (y - yi)**2) - (x - x0) / np.sqrt((x - x0)**2 + (y - y0)**2)
-                ady = (y - yi) / np.sqrt((x - xi)**2 + (y - yi)**2) - (y - y0) / np.sqrt((x - x0)**2 + (y - y0)**2)
-                jac.append([adx, ady])
-            return np.array(jac)
-        return fn
-
 
     def estimate(self, data, reference_position, ds_json, gateway_locations, plot=False):
         for idx, _ in data.iterrows():

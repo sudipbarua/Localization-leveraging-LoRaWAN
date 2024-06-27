@@ -120,8 +120,13 @@ def get_gw_cord_tdoa(index, ds_json, gw_loc, ref_pos):
     gw_meta = ds_json.loc[index, ['gateways']]
     for gws in gw_meta:
         for gw in gws:
-            gw_ids.append(gw['id'])
-            toa.append(gw['rx_time']['time'])
+            gateway_id = gw['id']
+            if gateway_id in gw_loc:
+                # Check wheather GW location information is actually availaable in the list or not
+                gw_ids.append(gateway_id)
+                toa.append(gw['rx_time']['time'])
+            else:
+                print(f'Gateway {gateway_id} location information is not available')
 
     print(f'Receiving gateways: {gw_ids}')
     print(f'Time of arrivals: {toa}')
