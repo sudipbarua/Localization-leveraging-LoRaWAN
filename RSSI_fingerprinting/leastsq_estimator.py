@@ -107,8 +107,8 @@ class Least_square_estimator:
 
         fig.update_layout(mapbox_style="open-street-map")
         fig.update_layout(margin={"r":0,"t":0,"l":0,"b":0})
-        # fig.show()
-        fig.write_image(f"fig/map_plots/gw{gw_ref}.jpg")  # Saving image
+        fig.show()
+        # fig.write_image(f"fig/map_plots/gw{gw_ref}.jpg")  # Saving image
 
 
 def main():

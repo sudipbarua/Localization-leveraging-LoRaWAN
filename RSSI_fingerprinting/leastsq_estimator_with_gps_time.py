@@ -1,16 +1,18 @@
 import numpy as np
 import scipy.optimize as opt
 import pandas as pd
-from data_preprocess import DataPreprocess
+from data_preprocess import DataProcessingGPStimer
 from leastsq_estimator import Least_square_estimator
 import pymap3d as pm
+import matplotlib.pyplot as plt
+import cartopy.crs as ccrs
+import cartopy.feature as cfeature
 
 
 class Least_square_estimator_gps_timer(Least_square_estimator):
     def __init__(self):
-        # Speed of propagation (m/s)
         super().__init__()
-        self.speed = 3e8
+        # self.speed = 3e8
 
     def estimate(self, data, reference_position, ds_json, gateway_locations, plot=False):
         for idx, _ in data.iterrows():
@@ -20,7 +22,7 @@ class Least_square_estimator_gps_timer(Least_square_estimator):
             init_pos = [row['x_i'], row['y_i']]
 
             # Now we collect the TOA and gateway lat-lon and calculate the TDoA and positions  
-            toa, gw_pos, _, gw_lat_lon = DataPreprocess().get_gw_cord_tdoa(row['gw_ref'], ds_json, gateway_locations, reference_position)
+            toa, gw_pos, _, gw_lat_lon = DataProcessingGPStimer().get_gw_cord_tdoa(row['gw_ref'], ds_json, gateway_locations, reference_position)
 
             if len(gw_pos) >= 3:
                 # The timestamps or the TOAs are string values so we convert them to Pandas tmestamp object
@@ -61,6 +63,46 @@ class Least_square_estimator_gps_timer(Least_square_estimator):
                 data.loc[idx, 'lon_est'] = 'Position unresolved'
         return data
 
+    def map_plot(self, result, gw_ref):
+        # Convert the data to a DataFrame
+        df = pd.DataFrame(result)
+
+        # Create a plot with Cartopy
+        fig = plt.figure(figsize=(10, 5))
+        ax = plt.axes(projection=ccrs.PlateCarree())
+
+        # Add features to the map
+        ax.add_feature(cfeature.COASTLINE)
+        ax.add_feature(cfeature.BORDERS)
+        ax.add_feature(cfeature.LAND)
+        ax.add_feature(cfeature.OCEAN)
+
+        # Define a colormap for the 'cat' categories
+        categories = df['cat'].unique()
+        colors = plt.cm.tab10(range(len(categories)))  # Use a colormap with enough distinct colors
+        colormap = dict(zip(categories, colors))
+
+        # Plot each category with its respective color
+        for category in categories:
+            subset = df[df['cat'] == category]
+            ax.scatter(subset['lon'], subset['lat'], color=colormap[category], s=50, edgecolor='k', label=category,
+                       transform=ccrs.PlateCarree())
+
+        # Add a legend
+        plt.legend(loc='upper left', bbox_to_anchor=(1, 1))
+
+        # Add title and labels
+        plt.title('Geographical Points Categorized by "cat"')
+        plt.xlabel('Longitude')
+        plt.ylabel('Latitude')
+
+        # Save the plot to a file
+        output_file = f'figs/map_plots/{gw_ref}.png'
+        plt.savefig(output_file, bbox_inches='tight')
+        # plt.show()
+
+        print(f"Map saved as {output_file}")
+
 
 def main():
     ##################### Testing script ###########################
@@ -82,19 +124,19 @@ def main():
     pos_pred_comb['x'], pos_pred_comb['y'], pos_pred_comb['z'] = pm.geodetic2enu(lat=pos_pred_comb['lat'], lon=pos_pred_comb['lon'], h=0, **ref_pos)
     pos_pred_comb['x_i'], pos_pred_comb['y_i'], pos_pred_comb['z_i'] = pm.geodetic2enu(lat=pos_pred_comb['pred_lat'], lon=pos_pred_comb['pred_lon'], h=0, **ref_pos)
     estimator = Least_square_estimator_gps_timer()
-    # est_rssi = estimator.estimate(data=pos_pred_rssi, 
-    #                              reference_position=ref_pos, 
-    #                              ds_json=ds_json, 
-    #                              gateway_locations=gw_loc)
+    est_rssi = estimator.estimate(data=pos_pred_rssi,
+                                 reference_position=ref_pos,
+                                 ds_json=ds_json,
+                                 gateway_locations=gw_loc)
     
-    # est_rssi.to_csv('RSSI_fingerprinting/files/position_estimation_rssi.csv')
+    est_rssi.to_csv('files/position_estimation_rssi_gps_time.csv')
     
     est_comb = estimator.estimate(data=pos_pred_comb, 
                                  reference_position=ref_pos, 
                                  ds_json=ds_json, 
-                                 gateway_locations=gw_loc, plot=True)
+                                 gateway_locations=gw_loc, plot=False)
 
-    est_comb.to_csv('RSSI_fingerprinting/files/position_estimation_comb.csv')
+    est_comb.to_csv('files/position_estimation_comb_gps_time.csv')
 
 
 
