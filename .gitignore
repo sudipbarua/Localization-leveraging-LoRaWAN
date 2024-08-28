@@ -170,4 +170,4 @@ RSSI_fingerprinting/data/*.json
 RSSI_fingerprinting/files/*.csv
 
 .idea
-
+*.png

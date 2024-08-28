@@ -111,7 +111,7 @@ class DataPreprocess:
                     print(f'Gateway {gateway_id} location information is not available')
 
 
-    # Collecting GW coordinates
+    # Collecting GW coordinates, ToA and TDoA 
     def get_gw_cord_tdoa(self, index, ds_json, gw_loc, ref_pos):
         """
         Inputs:
@@ -186,7 +186,7 @@ def main():
     ds = pd.read_csv('data/antwerp_ds_weather-data_2019.csv', index_col=0)
     ds_raw = pd.read_json('data/lorawan_antwerp_2019_dataset.json')
     ds_row_ref = get_row_raw_gw_info(ds, ds_raw)
-    ds_row_ref.to_csv('data/antwerp_combo_raw_ref.csv')
+    ds_row_ref.to_csv('data/antwerp_combo_raw_ref.csv')  # Saving the dataframe containing the corresponding index or row number from the raw jason file
 
 
 if __name__=='__main__':

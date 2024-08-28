@@ -124,20 +124,20 @@ def main():
     pos_pred_comb['x'], pos_pred_comb['y'], pos_pred_comb['z'] = pm.geodetic2enu(lat=pos_pred_comb['lat'], lon=pos_pred_comb['lon'], h=0, **ref_pos)
     pos_pred_comb['x_i'], pos_pred_comb['y_i'], pos_pred_comb['z_i'] = pm.geodetic2enu(lat=pos_pred_comb['pred_lat'], lon=pos_pred_comb['pred_lon'], h=0, **ref_pos)
     estimator = Least_square_estimator_gps_timer()
-    est_rssi = estimator.estimate(data=pos_pred_rssi,
-                                 reference_position=ref_pos,
-                                 ds_json=ds_json,
-                                 gateway_locations=gw_loc)
+    # est_rssi = estimator.estimate(data=pos_pred_rssi,
+    #                              reference_position=ref_pos,
+    #                              ds_json=ds_json,
+    #                              gateway_locations=gw_loc)
     
-    est_rssi.to_csv('files/position_estimation_rssi_gps_time.csv')
+    # est_rssi.to_csv('files/position_estimation_rssi_gps_time.csv')
     
     est_comb = estimator.estimate(data=pos_pred_comb, 
                                  reference_position=ref_pos, 
                                  ds_json=ds_json, 
-                                 gateway_locations=gw_loc, plot=False)
+                                 gateway_locations=gw_loc, plot=True)
 
     est_comb.to_csv('files/position_estimation_comb_gps_time.csv')
-
+    ########## Here comb stands for combination of RSSI and weather data ########
 
 
 if __name__=='__main__':
