@@ -4,10 +4,10 @@ from tensorflow import keras
 import pandas as pd
 import keras_tuner as kt
 
-x_w_train = pd.read_csv('D:/work_dir/Datasets/LoRa_anomaly-detection/RSSI_fingerprinting/files/x_w_train.csv', index_col=0)
-x_w_test = pd.read_csv('D:/work_dir/Datasets/LoRa_anomaly-detection/RSSI_fingerprinting/files/x_w_test.csv', index_col=0)
-y_w_train = pd.read_csv('D:/work_dir/Datasets/LoRa_anomaly-detection/RSSI_fingerprinting/files/y_w_train.csv', index_col=0)
-y_w_test = pd.read_csv('D:/work_dir/Datasets/LoRa_anomaly-detection/RSSI_fingerprinting/files/y_w_test.csv', index_col=0)
+x_w_train = pd.read_csv('RSSI_fingerprinting/files/x_w_train.csv', index_col=0)
+x_w_test = pd.read_csv('RSSI_fingerprinting/files/x_w_test.csv', index_col=0)
+y_w_train = pd.read_csv('RSSI_fingerprinting/files/y_w_train.csv', index_col=0)
+y_w_test = pd.read_csv('RSSI_fingerprinting/files/y_w_test.csv', index_col=0)
 
 x_w_train = x_w_train.head(100)
 y_w_train = y_w_train.head(100)
@@ -52,7 +52,7 @@ tuner = kt.Hyperband(model_builder,
                      objective='val_mse',
                      max_epochs=10,
                      factor=3,
-                     directory='D:/work_dir/Datasets/LoRa_anomaly-detection/RSSI_fingerprinting/model_tuning',
+                     directory='RSSI_fingerprinting/model_tuning',
                      project_name='hyperband_tuner')
 
 stop_early = tf.keras.callbacks.EarlyStopping(monitor='val_loss', patience=5)
@@ -66,3 +66,14 @@ best_hps=tuner.get_best_hyperparameters(num_trials=1)[0]
 print(f"""
 The hyperparameter search is complete. The optimal number of layers is {best_hps.get('layers')}.
 """)
+
+"""
+*******For Linux users**********
+Tuning takes hours (if not days or weeks). So it will be necessary to run this program on background.
+So we create a seperate screen for running an instance of this. This way it will neither be interrupted by other actvities
+nor terminated when the session is closed.
+Simply type "screen -S tuning-1" to create a new session and run the program.
+And if a screen is already running , we can use "screen -r <session name>" command to check the running session and switch to it.
+Note: NEVER PRESS CTRL+D/C when you are in a running screen. It will terminate the screen.
+INSTEAD press CTRL+A+D to detach the screen
+"""
