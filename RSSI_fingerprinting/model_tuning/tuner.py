@@ -9,8 +9,11 @@ x_w_test = pd.read_csv('RSSI_fingerprinting/files/x_w_test.csv', index_col=0)
 y_w_train = pd.read_csv('RSSI_fingerprinting/files/y_w_train.csv', index_col=0)
 y_w_test = pd.read_csv('RSSI_fingerprinting/files/y_w_test.csv', index_col=0)
 
-x_w_train = x_w_train.head(100)
-y_w_train = y_w_train.head(100)
+# # Take random sample from the dataset
+# train_ds = pd.concat([x_w_train.reset_index(drop=True), y_w_train.reset_index(drop=True)], axis=1)
+# sampled_df = train_ds.sample(frac=0.2, random_state=1)
+# x_w_train = sampled_df.drop(columns=['lat', 'lon'])
+# y_w_train = sampled_df[['lat', 'lon']].copy()
 
 # reshape input data
 x_train = x_w_train.drop(columns=['timestamp', 'gw_ref'])
