@@ -50,8 +50,8 @@ class Least_square_estimator_combinationGWs(Least_square_estimator_gps_timer):
 
 def main():
     ##################### Testing script ###########################
-    ds_json = pd.read_json('data/lorawan_antwerp_2019_dataset.json')
-    gw_loc = pd.read_json('data/lorawan_antwerp_gateway_locations.json')
+    ds_json = pd.read_json('../data/lorawan_antwerp_2019_dataset.json')
+    gw_loc = pd.read_json('../data/lorawan_antwerp_gateway_locations.json')
 
     # Loading initial position coordinates form machine learning predictions
     pos_pred_rssi = pd.read_csv('files/position_pred_RSSI.csv', index_col=0)

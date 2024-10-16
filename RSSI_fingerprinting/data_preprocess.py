@@ -183,8 +183,8 @@ class DataProcessingGPStimer(DataPreprocess):
 
 def main():
     # collecting the row number of the matched data sample based on the TOA timestamp info in the gateways subsection
-    ds = pd.read_csv('data/antwerp_ds_weather-data_2019.csv', index_col=0)
-    ds_raw = pd.read_json('data/lorawan_antwerp_2019_dataset.json')
+    ds = pd.read_csv('../data/antwerp_ds_weather-data_2019.csv', index_col=0)
+    ds_raw = pd.read_json('../data/lorawan_antwerp_2019_dataset.json')
     ds_row_ref = get_row_raw_gw_info(ds, ds_raw)
     ds_row_ref.to_csv('data/antwerp_combo_raw_ref.csv')  # Saving the dataframe containing the corresponding index or row number from the raw jason file
 
