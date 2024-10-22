@@ -14,9 +14,10 @@ class Least_square_estimator:
     # method to generate the residuals for all hyperbolae
     def function(self, measurements, speeds):
         def fn(args):
+            # Here the args are the arguments passed to the leastsq estimator method
             x, y = args[:2]  # Extract x and y coordinates from args
             residuals = []
-            for i in range(len(measurements)):
+            for i in range(1, len(measurements)):
                 xi, yi, ti = measurements[i]
                 x0 = measurements[0][0]
                 y0 = measurements[0][1]
@@ -30,18 +31,14 @@ class Least_square_estimator:
         return fn
 
     # Function to generate the Jacobian matrix
-    def jacobian(self, measurements, speeds):
+    def jacobian(self, measurements):
         def fn(args):
             x, y = args[:2]  # Extract x and y coordinates from args
             jac = []
-            for i in range(len(measurements)):
+            for i in range(1, len(measurements)):
                 xi, yi, ti = measurements[i]
                 x0 = measurements[0][0]
                 y0 = measurements[0][1]
-                # We use the pandas timestamp method in this case, 
-                # because it is the only one that can handle precision upto nanosecond
-                diff_seconds = (pd.Timestamp(ti).value - pd.Timestamp(measurements[0][2]).value) * 1e-9  # the values are converted to seconds
-                di = diff_seconds * speeds[i]
                 adx = (x - xi) / np.sqrt((x - xi)**2 + (y - yi)**2) - (x - x0) / np.sqrt((x - x0)**2 + (y - y0)**2)
                 ady = (y - yi) / np.sqrt((x - xi)**2 + (y - yi)**2) - (y - y0) / np.sqrt((x - x0)**2 + (y - y0)**2)
                 jac.append([adx, ady])

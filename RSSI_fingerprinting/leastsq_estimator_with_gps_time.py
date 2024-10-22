@@ -35,7 +35,7 @@ class Least_square_estimator_gps_timer(Least_square_estimator):
 
                 # Define functions and jacobian
                 F = self.function(measurements, speeds)
-                J = self.jacobian(measurements, speeds)
+                J = self.jacobian(measurements)
 
                 # Perform least squares optimization
                 x, y = opt.leastsq(func=F, x0=init_pos, Dfun=J)
