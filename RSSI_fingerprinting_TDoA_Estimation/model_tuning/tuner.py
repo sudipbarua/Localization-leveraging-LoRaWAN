@@ -4,10 +4,10 @@ from tensorflow import keras
 import pandas as pd
 import keras_tuner as kt
 
-x_w_train = pd.read_csv('RSSI-fingerprinting_TDoA-Estimation/files/x_w_train.csv', index_col=0)
-x_w_test = pd.read_csv('RSSI-fingerprinting_TDoA-Estimation/files/x_w_test.csv', index_col=0)
-y_w_train = pd.read_csv('RSSI-fingerprinting_TDoA-Estimation/files/y_w_train.csv', index_col=0)
-y_w_test = pd.read_csv('RSSI-fingerprinting_TDoA-Estimation/files/y_w_test.csv', index_col=0)
+x_w_train = pd.read_csv('RSSI_fingerprinting_TDoA_Estimation/files/x_w_train.csv', index_col=0)
+x_w_test = pd.read_csv('RSSI_fingerprinting_TDoA_Estimation/files/x_w_test.csv', index_col=0)
+y_w_train = pd.read_csv('RSSI_fingerprinting_TDoA_Estimation/files/y_w_train.csv', index_col=0)
+y_w_test = pd.read_csv('RSSI_fingerprinting_TDoA_Estimation/files/y_w_test.csv', index_col=0)
 
 # # Take random sample from the dataset
 # train_ds = pd.concat([x_w_train.reset_index(drop=True), y_w_train.reset_index(drop=True)], axis=1)
@@ -55,7 +55,7 @@ tuner = kt.Hyperband(model_builder,
                      objective='val_mse',
                      max_epochs=10,
                      factor=3,
-                     directory='RSSI-fingerprinting_TDoA-Estimation/model_tuning',
+                     directory='RSSI_fingerprinting_TDoA_Estimation/model_tuning',
                      project_name='hyperband_tuner')
 
 stop_early = tf.keras.callbacks.EarlyStopping(monitor='val_loss', patience=5)

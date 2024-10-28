@@ -115,7 +115,7 @@ class DataPreprocess:
     def get_gw_cord_tdoa(self, index, ds_json, gw_loc, ref_pos):
         """
         Inputs:
-            - index: This is the reference index of the raw data json file 'RSSI-fingerprinting_TDoA-Estimation\data\lorawan_antwerp_2019_dataset.json'
+            - index: This is the reference index of the raw data json file 'RSSI_fingerprinting_TDoA_Estimation\data\lorawan_antwerp_2019_dataset.json'
                      from which we are going to take the GW meta data
             - ds_json: Raw data file read by pandas as dataframe
             - gw_loc: Gateway locations from the raw data file

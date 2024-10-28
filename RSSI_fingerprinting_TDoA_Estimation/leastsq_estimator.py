@@ -110,12 +110,12 @@ class Least_square_estimator:
 
 def main():
     ##################### Testing script ###########################
-    ds_json = pd.read_json('RSSI-fingerprinting_TDoA-Estimation/data/lorawan_antwerp_2019_dataset.json')
-    gw_loc = pd.read_json('RSSI-fingerprinting_TDoA-Estimation/data/lorawan_antwerp_gateway_locations.json')
+    ds_json = pd.read_json('RSSI_fingerprinting_TDoA_Estimation/data/lorawan_antwerp_2019_dataset.json')
+    gw_loc = pd.read_json('RSSI_fingerprinting_TDoA_Estimation/data/lorawan_antwerp_gateway_locations.json')
 
     # Loading initial position coordinates form machine learning predictions
-    pos_pred_rssi = pd.read_csv('RSSI-fingerprinting_TDoA-Estimation/files/position_pred_RSSI.csv', index_col=0)
-    pos_pred_comb = pd.read_csv('RSSI-fingerprinting_TDoA-Estimation/files/position_pred_weather-comb.csv', index_col=0)
+    pos_pred_rssi = pd.read_csv('RSSI_fingerprinting_TDoA_Estimation/files/position_pred_RSSI.csv', index_col=0)
+    pos_pred_comb = pd.read_csv('RSSI_fingerprinting_TDoA_Estimation/files/position_pred_weather-comb.csv', index_col=0)
 
 
     ref_pos = {'lat0': 51.260644,
@@ -133,14 +133,14 @@ def main():
     #                              ds_json=ds_json, 
     #                              gateway_locations=gw_loc)
     
-    # est_rssi.to_csv('RSSI-fingerprinting_TDoA-Estimation/files/position_estimation_rssi.csv')
+    # est_rssi.to_csv('RSSI_fingerprinting_TDoA_Estimation/files/position_estimation_rssi.csv')
     
     est_comb = estimator.estimate(data=pos_pred_comb, 
                                  reference_position=ref_pos, 
                                  ds_json=ds_json, 
                                  gateway_locations=gw_loc, plot=True)
 
-    est_comb.to_csv('RSSI-fingerprinting_TDoA-Estimation/files/position_estimation_comb.csv')
+    est_comb.to_csv('RSSI_fingerprinting_TDoA_Estimation/files/position_estimation_comb.csv')
 
 
 
