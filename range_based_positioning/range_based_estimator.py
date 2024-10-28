@@ -4,20 +4,35 @@ import numpy as np
 import pandas as pd
 import pymap3d as pm
 import scipy.optimize as opt
+import json
 
 import sys
 sys.path.append('D:/work_dir/Datasets/LoRa_anomaly-detection')
 from RSSI_fingerprinting.data_preprocess import DataPreprocess
 
 class RangeBasedEstimator:
-    def __init__(self, reference_position):
+    def __init__(self, reference_position, gateways, path_loss_exponent, reference_distance, reference_rssi):
         self.reference_position = reference_position
-    
+        self.gateways = gateways  # The list of known coordinates of the receiving gateways
+        self.path_loss_exponent = path_loss_exponent
+        self.reference_distance = reference_distance
+        self.reference_rssi = reference_rssi
+
     def packet_perser(self):
         pass
     
-    def gw_cord_collector(self):
-        pass
+    def gw_cord_collector(self, pkt):
+        gw_pos_enu = []
+        gw_lat_lon = []
+        for gateway in pkt['gateways']:
+            lat = self.gateways[gateway['id']['latitude']]
+            lon = self.gateways[gateway['id']['longitude']]
+            x, y, z = pm.geodetic2enu(lat=lat, lon=lon, h=0, **self.reference_position)
+            gw_pos_enu.append([x,y,z])
+            gw_lat_lon.append([lat, lon])
+        
+        self.gateway_coordinates_enu = np.asarray(gw_pos_enu)
+        self.gateway_lat_lon = np.asarray(gw_lat_lon)
 
     def link_budget_param_collector(self):
         pass
@@ -42,7 +57,6 @@ class RangeBasedEstimator:
             """
         return query
  
-
 
     def get_average_building_height(self, lat1, lon1, lat2, lon2):
         # Define the Overpass API query
@@ -70,7 +84,6 @@ class RangeBasedEstimator:
         else:
             return None  # No building height data available
         
-    
     
     def get_average_street_width(self, lat1, lon1, lat2, lon2):
         # Define the Overpass API query to get streets with width
@@ -108,11 +121,6 @@ class RangeBasedEstimator:
         else:
             return None  # No width data available
 
-
-    def path_loss_range(self):
-        # Free space path loss 
-
-        return R
 
     def residual_function(self, measurements, range):
         """
@@ -152,36 +160,77 @@ class RangeBasedEstimator:
     def haversine_distance(self):
         pass
 
-    def range_predictor(self):
-        pass
+    def range_calculator(self, pkt):
+        # From reference RSSI and distance: using a reference based path loss model   
+        R = []
+        beta = self.path_loss_exponent
+        rssi_0 = self.reference_rssi
+        d_0 = self.reference_distance
 
-    def estimator(self, data, ds_json, gateway_locations):
-        for idx, _ in data.iterrows():
-            row = data.iloc[idx]
-            
-            # Initital position for estimation 
-            init_pos = [row['x_i'], row['y_i']]
-            
-            _, gw_pos, _, gw_lat_lon = DataPreprocess().get_gw_cord_tdoa(row['gw_ref'], ds_json, gateway_locations, self.reference_position)
-
-            # We create a list called measurements 
-            # This contains the recieving gateway positions 
-            measurements = np.c_[gw_pos[:, [0,2]]]
-
-            distance = self.path_loss_range()  # returns an array of ranges from 
-
-            # Define functions and jacobian
-            F = self.residual_function(measurements, distance)
-            J = self.jacobian_of_residual(measurements)
-
-            # Perform least squares optimization
-            x, y = opt.leastsq(func=F, x0=init_pos, Dfun=J)
-
-            print(f"Optimized (x, y): ({x}, {y})")
-            # Estimated lat-lon 
-            lat_est, lon_est, _ = pm.enu2geodetic(e=x[0], n=x[1], u=0, **self.reference_position)
-
+        for gw in pkt['gateways']:
+            rssi = gw('rssi')
+            d = d_0 * 10 ** ( (rssi_0 - rssi) / 10 * beta )
+            R.append(d)
         
+        return R
 
+    def initial_position(self, gw_pos):
+        # center of the polygon created by the GWs 
+        return np.mean(gw_pos, axis=0) 
+    
+    
+    def estimate(self, packet):
+        # list of position of the gateways in ENU format
+        try:
+            self.gw_cord_collector(packet) 
+        except:
+            print('Gateway coordinates are unavailable')
+            return None, None, None
+        
+        # Initital position for estimation 
+        init_pos = self.initial_position(self.gateway_coordinates_enu)
 
+        measurements = np.c_[self.gateway_coordinates_enu[:, [0,2]]]
+
+        distances = self.range_calculator(packet)  # returns an array of ranges from 
+
+        # Define functions and jacobian
+        F = self.residual_function(measurements, distances)
+        J = self.jacobian_of_residual(measurements)
+
+        # Perform least squares optimization
+        x, y = opt.leastsq(func=F, x0=init_pos, Dfun=J)
+
+        print(f"Optimized (x, y): ({x}, {y})")
+        # Estimated lat-lon 
+        return pm.enu2geodetic(e=x[0], n=x[1], u=0, **self.reference_position)
+
+            
+def main():
+    with open('D:/work_dir/Datasets/LoRa_anomaly-detection/data/lorawan_antwerp_2019_dataset.json', 'r') as file1:
+        data = json.load(file1)
+
+    with open('D:/work_dir/Datasets/LoRa_anomaly-detection/data/lorawan_antwerp_gateway_locations.json', 'r') as file2:
+        gateways = json.load(file2)
+
+    ref_pos = {'lat0': 51.260644,
+        'lon0': 4.370656,
+        'h0': 0}
+    
+    estimator = RangeBasedEstimator(reference_position=ref_pos, gateways=gateways, 
+                                    reference_distance=4.709445557884708,
+                                    reference_rssi=-60,
+                                    path_loss_exponent=0.4057)
+    
+    for packet in data:
+        if len(packet['gateways']) >= 3:
+            lat, lon, _ = estimator.estimate(packet)
+
+        else: 
+            print('Position cannot be solved: expected Number of reciveing gateways is at least 3')
+
+    
+
+if __name__=='__main__':
+    main()
     
