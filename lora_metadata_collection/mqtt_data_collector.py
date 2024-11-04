@@ -32,7 +32,6 @@ def on_message(client, userdata, msg):
         # Parse the MQTT message payload
         payload = msg.payload.decode("utf-8")
         message = json.loads(payload)
-        print('Received a message........')
 
         # Add a timestamp
         message["timestamp"] = datetime.datetime.now()
