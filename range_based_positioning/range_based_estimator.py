@@ -158,8 +158,30 @@ class RangeBasedEstimator:
     def weather_info_collector(self):
         pass
 
-    def haversine_distance(self):
-        pass
+
+    def channel_mapper(self, channel):
+        # Maps the channel number to frequency
+        # Useful for Antwerp dataset 
+        match channel:
+            case 1:
+                return 868.1
+            case 2:
+                return 868.3
+            case 3:
+                return 868.5
+            case 4:
+                return 867.1
+            case 5:
+                return 867.3
+            case 6:
+                return 867.5
+            case 7:
+                return 867.7
+            case 8:
+                return 867.9
+            case 9:
+                return 868.8
+
 
     def range_calculator(self, pkt):
         # From reference RSSI and distance: using a reference based path loss model   
