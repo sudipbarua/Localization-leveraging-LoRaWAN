@@ -163,11 +163,14 @@ cython_debug/
 
 
 public_data_analysis/sample_weather_data.csv
-RSSI_fingerprinting/*.csv
+RSSI_fingerprinting_TDoA_Estimation/*.csv
 public_data_analysis/*.json
-RSSI_fingerprinting/data/*.csv
-RSSI_fingerprinting/data/*.json
-RSSI_fingerprinting/files/*.csv
+data/*.csv
+data/*.json
 
 .idea
 *.png
+range_based_positioning/*.csv
+RSSI_fingerprinting_TDoA_Estimation/files/*.csv
+RSSI_fingerprinting_TDoA_Estimation/model_tuning/hyperband_tuner
+.vscode/settings.json
