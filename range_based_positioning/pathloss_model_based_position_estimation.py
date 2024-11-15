@@ -30,7 +30,7 @@ class PLPositioningEngine_OkumuraHata(RangeBasedEstimator):
         R = []
         # Collect the frequency from the packet 
         
-        #!!!!!!!!!!!!try to do dynamic h_b and h_m extraction from the pkt. pkt shoud contain all the necessary information in JSON format!!!!!!!!
+        #!!!!!!!!!!!!try to do dynamic h_b and h_m extraction from the pkt. pkt should contain all the necessary information in JSON format!!!!!!!!
         h_b = 30                                 # The height of the base station 
         h_m = 1                                  # height of the mobile station
         f = self.channel_mapper(pkt['channel'])  # frequency in MHz

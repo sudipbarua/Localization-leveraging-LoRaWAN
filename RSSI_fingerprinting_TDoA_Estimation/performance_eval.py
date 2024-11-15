@@ -68,7 +68,7 @@ def error_stats(ground_truth, predictions,statistical_metric='mean',percentile=5
         return statistics.median(distances)	
     elif statistical_metric=="percentile" and (percentile>=0 or percentile<=100):
         return np.percentile(distances,percentile)	
-    # elif statistical_metric=="min_max":
-        # return min(distances), max(distances)
+    elif statistical_metric=="min_max":
+        return min(distances), max(distances)
     else:
         return statistics.mean(distances)
