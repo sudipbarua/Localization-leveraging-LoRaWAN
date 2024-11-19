@@ -7,10 +7,8 @@ import plotly.express as px
 import pandas as pd
 
 
-def map_plot(result, gw_ref):
+def map_plot_cartopy(result, ref):
     """
-    _, _, _, gw_lat_lon = DataPreprocess().get_gw_cord_tdoa(row['gw_ref'], ds_json, gateway_locations, reference_position)
-
     # Creating a list of results for plotting in the map
     result = {
         'lat': [row['lat'], lat_est, row['pred_lat']] + [gw_lat_lon[i][0] for i in range(len(gw_lat_lon))],
@@ -52,23 +50,23 @@ def map_plot(result, gw_ref):
     plt.ylabel('Latitude')
 
     # Save the plot to a file
-    output_file = f'figs/map_plots/{gw_ref}.png'
+    output_file = f'figs/map_plots/{ref}.png'
     plt.savefig(output_file, bbox_inches='tight')
     # plt.show()
 
     print(f"Map saved as {output_file}")
 
 
-def map_plot(df):
+def map_plot(df, zoom=15):
     color_scale = [(0, 'orange'), (1,'red')]
 
     fig = px.scatter_mapbox(df, 
-                            lat='rxInfo_location_latitude', 
-                            lon='rxInfo_location_longitude', 
+                            lat='lat', 
+                            lon='lon', 
                             color_continuous_scale=color_scale,
-                            zoom=8, 
-                            height=800,
-                            width=800)
+                            zoom=zoom, 
+                            height=600,
+                            width=600)
 
     fig.update_layout(mapbox_style="open-street-map")
     fig.update_layout(margin={"r":0,"t":0,"l":0,"b":0})

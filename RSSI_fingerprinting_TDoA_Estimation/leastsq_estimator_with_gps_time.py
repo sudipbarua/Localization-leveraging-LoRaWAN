@@ -134,7 +134,7 @@ def main():
     est_comb = estimator.estimate(data=pos_pred_comb, 
                                  reference_position=ref_pos, 
                                  ds_json=ds_json, 
-                                 gateway_locations=gw_loc, plot=True)
+                                 gateway_locations=gw_loc, plot=False)
 
     est_comb.to_csv('files/position_estimation_comb_gps_time.csv')
     ########## Here comb stands for combination of RSSI and weather data ########

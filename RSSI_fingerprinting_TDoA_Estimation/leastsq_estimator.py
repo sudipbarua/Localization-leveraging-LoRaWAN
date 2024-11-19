@@ -3,7 +3,12 @@ import numpy as np
 import scipy.optimize as opt
 import pymap3d as pm
 import pandas as pd
-from data_preprocess import DataPreprocess
+
+# Importing native libraries
+import sys
+sys.path.append('D:/work_dir/Datasets/LoRa_anomaly-detection')
+from RSSI_fingerprinting_TDoA_Estimation.data_preprocess import DataPreprocess
+from RSSI_fingerprinting_TDoA_Estimation.performance_eval import *
 
 
 class Least_square_estimator:
@@ -142,6 +147,24 @@ def main():
 
     est_comb.to_csv('RSSI_fingerprinting_TDoA_Estimation/files/position_estimation_comb.csv')
 
+    est_copy = est_comb.copy()
+
+    est_copy['lat_est'] = pd.to_numeric(r['lat_est'], errors='coerce')
+    est_copy['lon_est'] = pd.to_numeric(r['lon_est'], errors='coerce')
+
+    r_woNan = est_copy.dropna(subset=['lat_est'])
+    actual_pos_2 = r_woNan[['lat', 'lon']].to_numpy()
+    est_pos = r_woNan[['lat_est', 'lon_est']].to_numpy()    
+
+    estimation_error = calculate_pairwise_error_list(ground_truth=actual_pos_2, predictions=est_pos)
+
+    # y = [x for x in estimation_error if x < 1000]
+    y = estimation_error
+
+    print(f'min {min(y)}')
+    print(f'max {max(y)}')
+    print(f'mean {np.mean(y)}')
+    print(f'median {np.median(y)}')
 
 
 if __name__=='__main__':
