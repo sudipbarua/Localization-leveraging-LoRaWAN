@@ -2,23 +2,20 @@
 This is a TDoA based estimator or position solver.
 Implementing a child classes of the Least square estimator from "project_directory/RSSI_fingerprinting_TDoA_Estimation"
 The main function and the jacobian of the master implementation remains the same. Although, here the 3rd dimension: z or altitude is added 
-In this version we will make the data persing more modularized and suitable for reading the mqtt json data from chirpstack   
+In this version we will make the data parsing more modularized and suitable for reading the mqtt json data from chirpstack
 """
-
-import json
-import numpy as np
-import scipy.optimize as opt
 
 # Importing native libraries
 import sys
 sys.path.append('D:/work_dir/Datasets/LoRa_anomaly-detection')
-from RSSI_fingerprinting_TDoA_Estimation.leastsq_estimator import Least_square_estimator
-from general_functions import *   # We are going to use the 'map_plot_cartopy' method 
+from tdoa_position_solver.estimator import *
+from general_functions import *   # We are going to use the 'map_plot_cartopy' method
 from RSSI_fingerprinting_TDoA_Estimation.performance_eval import calculate_pairwise_error_list
 
-class Estimator():
+class Estimator_3d(Estimator):
     def __init__(self, reference_position):
         # Speed of propagation (m/s)
+        super().__init__(reference_position)
         self.speed = 3e8
         self.ref_pos = reference_position
 
@@ -26,47 +23,40 @@ class Estimator():
     def function(self, measurements):
         def fn(args):
             # Here the args are the arguments passed to the leastsq estimator method
-            x, y = args[:2]  # Extract x, y and z coordinates from args
+            x, y, z = args[:3]  # Extract x, y and z coordinates from args
             residuals = []
             for i in range(1, len(measurements)):
-                xi, yi, _, ti = measurements[i]
+                xi, yi, zi, ti = measurements[i]
                 x0 = measurements[0][0]
                 y0 = measurements[0][1]
-                # We use the pandas timestamp method in this case,
+                z0 = measurements[0][2]
+                # We use the pandas timestamp method in this case, 
                 # because it is the only one that can handle precision upto nanosecond
-                diff_seconds = (pd.Timestamp(ti).value - pd.Timestamp(measurements[0][2]).value) * 1e-9  # the values are converted to seconds
+                diff_seconds = (pd.Timestamp(ti).value - pd.Timestamp(
+                    measurements[0][2]).value) * 1e-9  # the values are converted to seconds
                 di = diff_seconds * self.speed
-                ai = np.sqrt((x - xi)**2 + (y - yi)**2) - np.sqrt((x - x0)**2 + (y - y0)**2) - abs(di)                                 # for 2D
+                ai = np.sqrt((x - xi)**2 + (y - yi)**2 + (z - zi)**2) - np.sqrt((x - x0)**2 + (y - y0)**2 + (z - z0**2)) - abs(di)   # for 3D
                 residuals.append(ai)
             return residuals
+
         return fn
 
     # Function to generate the Jacobian matrix
     def jacobian(self, measurements):
         def fn(args):
-            x, y = args[:2]  # Extract x and y coordinates from args
+            x, y, z = args[:3]  # Extract x and y coordinates from args
             jac = []
             for i in range(1, len(measurements)):
-                xi, yi, _, _ = measurements[i]
+                xi, yi, zi, _ = measurements[i]
                 x0 = measurements[0][0]
+                z0 = measurements[0][2]
                 y0 = measurements[0][1]
-                adx = (x - xi) / np.sqrt((x - xi)**2 + (y - yi)**2) - (x - x0) / np.sqrt((x - x0)**2 + (y - y0)**2)
-                ady = (y - yi) / np.sqrt((x - xi)**2 + (y - yi)**2) - (y - y0) / np.sqrt((x - x0)**2 + (y - y0)**2)
-                jac.append([adx, ady])
+                adx = (x - xi) / np.sqrt((x - xi)**2 + (y - yi)**2 + (z - zi)**2) - (x - x0) / np.sqrt((x - x0)**2 + (y - y0)**2 + (z - z0**2))
+                ady = (y - yi) / np.sqrt((x - xi)**2 + (y - yi)**2 + (z - zi)**2) - (y - y0) / np.sqrt((x - x0)**2 + (y - y0)**2 + (z - z0**2))
+                adz = (z - zi) / np.sqrt((x - xi)**2 + (y - yi)**2 + (z - zi)**2) - (z - z0) / np.sqrt((x - x0)**2 + (y - y0)**2 + (z - z0**2))
+                jac.append([adx, ady, adz])
             return np.array(jac)
         return fn
-
-    def get_gateway_positions(self, packet, gateways):
-        self.gateway_positions = []  # ENU coordinates
-        self.gw_lat_lon = []         # Lat lon values
-
-        for rxinfo in packet['rxInfo']:
-            lat = gateways[rxinfo['gatewayId']]['latitude']
-            lon = gateways[rxinfo['gatewayId']]['longitude']
-            alt = gateways[rxinfo['gatewayId']]['altitude']
-            self.gw_lat_lon.append([lat, lon])
-            x, y, z = pm.geodetic2enu(lat=lat, lon=lon, h=alt, **self.ref_pos)
-            self.gateway_positions.append([x, y, z])
 
 
     def estimate(self, packet, gateways, plot=False):
@@ -79,7 +69,7 @@ class Estimator():
         # Initital position for estimation: mean of the gateway coordinates 
         init_pos = np.mean(self.gateway_positions, axis=0) 
 
-        if len(self.gateway_positions) >= 3:
+        if len(self.gateway_positions) >= 4:
             # The timestamps or the TOAs are string values so we convert them to Pandas tmestamp object
             ts = np.asarray([pd.Timestamp(t) for t in toa])
             # We also create a list called measurements
@@ -88,10 +78,10 @@ class Estimator():
 
             # Define functions and jacobian
             F = self.function(measurements)
-            J = self.jacobian(measurements)
+            J = self.jacobian(measurements)# Define functions and jacobian
 
             # Perform least squares optimization
-            x, y = opt.leastsq(func=F, x0=init_pos[:2], Dfun=J)        # For 2D positions
+            x, y = opt.leastsq(func=F, x0=init_pos, Dfun=J)
 
             print(f"Optimized (x, y, z): ({x}, {y})")
             # Estimated lat-lon
@@ -128,7 +118,7 @@ def main():
             'lon0': 12.928044,
             'h0': 0}
 
-    estimator = Estimator(reference_position=ref_pos)
+    estimator = Estimator_3d(reference_position=ref_pos)
     
     for packet in ds_json:
         est = estimator.estimate(packet=packet,
