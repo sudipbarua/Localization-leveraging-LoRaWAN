@@ -7,7 +7,7 @@ import plotly.express as px
 import pandas as pd
 
 
-def map_plot_cartopy(result, ref):
+def map_plot_cartopy(result, path):
     """
     # Creating a list of results for plotting in the map
     result = {
@@ -45,12 +45,13 @@ def map_plot_cartopy(result, ref):
     plt.legend(loc='upper left', bbox_to_anchor=(1, 1))
 
     # Add title and labels
-    plt.title('Geographical Points Categorized by "cat"')
+    plt.title('Geographical Points')
     plt.xlabel('Longitude')
     plt.ylabel('Latitude')
 
     # Save the plot to a file
-    output_file = f'figs/map_plots/{ref}.png'
+    # output_file = f'figs/map_plots/{ref}.png'
+    output_file = path
     plt.savefig(output_file, bbox_inches='tight')
     # plt.show()
 

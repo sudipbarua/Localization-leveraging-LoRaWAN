@@ -13,11 +13,12 @@ from general_functions import *   # We are going to use the 'map_plot_cartopy' m
 from RSSI_fingerprinting_TDoA_Estimation.performance_eval import calculate_pairwise_error_list
 
 class Estimator_3d(Estimator):
-    def __init__(self, reference_position):
+    def __init__(self, reference_position, result_directory):
         # Speed of propagation (m/s)
-        super().__init__(reference_position)
+        super().__init__(reference_position, result_directory)
         self.speed = 3e8
         self.ref_pos = reference_position
+        self.result_dir = result_directory
 
     # method to generate the residuals for all hyperbolae
     def function(self, measurements):
@@ -60,18 +61,14 @@ class Estimator_3d(Estimator):
 
 
     def estimate(self, packet, gateways, plot=False):
-        toa = []
-        for rxinfo in packet['rxInfo']:
-            toa.append(rxinfo['gwTime'])
-        
-        self.get_gateway_positions(packet, gateways)
+        self.get_gateway_positions_toa(packet, gateways)
         
         # Initital position for estimation: mean of the gateway coordinates 
         init_pos = np.mean(self.gateway_positions, axis=0) 
 
-        if len(self.gateway_positions) >= 4:
+        if len(self.gateway_positions) >= 4:        # *++++++++++Change in the condition
             # The timestamps or the TOAs are string values so we convert them to Pandas tmestamp object
-            ts = np.asarray([pd.Timestamp(t) for t in toa])
+            ts = np.asarray([pd.Timestamp(t) for t in self.toa])
             # We also create a list called measurements
             # This contains the recieving gateway positions and the TOA
             measurements = np.c_[self.gateway_positions, ts]
@@ -85,8 +82,7 @@ class Estimator_3d(Estimator):
 
             print(f"Optimized (x, y, z): ({x}, {y})")
             # Estimated lat-lon
-            lat_est, lon_est, alt_est = pm.enu2geodetic(e=x[0], n=x[1], u=0, **self.ref_pos)
-            # lat_est, lon_est, alt_est = pm.enu2geodetic(e=x[0], n=x[1], u=x[2], **self.ref_pos)
+            lat_est, lon_est, alt_est = pm.enu2geodetic(e=x[0], n=x[1], u=x[2], **self.ref_pos)     # *****Change*****
 
             if plot==True:
                 # Creating a list of results for plotting in the map
@@ -95,8 +91,12 @@ class Estimator_3d(Estimator):
                     'lon': [lon_est] + [self.gw_lat_lon[i][1] for i in range(len(self.gw_lat_lon))],
                     'cat': ['Estimated Pos'] + [f'GW Positions' for i in range(len(self.gw_lat_lon))]
                 }
-                # map plot for individual predictions and estimations 
-                map_plot_cartopy(result, ref=packet['deduplicationId'])
+                # map plot for individual predictions and estimations
+                directory = os.path.join(self.result_dir, 'map_plot')
+                if not os.path.exists(directory):
+                    os.makedirs(directory)
+                file_path = os.path.join(directory, f"{packet['deduplicationId']}.png")
+                map_plot_cartopy(result, path=file_path)
 
         else:
             print('Position cannot be resolved. Not enough gws to for TDoA measurement')
@@ -112,30 +112,42 @@ def main():
     # ds_json = pd.read_json('data/tuc_lora_metadata.mqtt_data_13-11.json')
     # gw_loc = pd.read_json('data/lorawan_antwerp_gateway_locations.json')
     with open('../data/tuc_lora_gateways.json') as file2:
-        gw_loc = json.load(file2) 
+        gw_loc = json.load(file2)
 
     ref_pos = {'lat0': 50.814131,
             'lon0': 12.928044,
             'h0': 0}
+    result_directory = f'results/lstsq_3D/{datetime.now().strftime('%Y-%m-%d_%H-%M')}'
+    # Ensure the result_directory exists
+    if not os.path.exists(result_directory):
+        os.makedirs(result_directory)
+    estimator = Estimator_3d(reference_position=ref_pos,
+                             result_directory=result_directory)
 
-    estimator = Estimator_3d(reference_position=ref_pos)
-    
+    estimated_position = []
     for packet in ds_json:
         est = estimator.estimate(packet=packet,
-                                 gateways=gw_loc, 
-                                 plot=False)
+                                 gateways=gw_loc,
+                                 plot=True)
+        estimated_position.append(est)
 
-    est.to_csv('files/position_estimation_comb_gps_time.csv')
+    estimated_position = pd.DataFrame(estimated_position, columns=['lat', 'lon', 'alt'])
 
-    # Getting statistical information of the results 
-    est_copy = est.copy()
+    # Save results
+    file_path = os.path.join(result_directory, f"estimated_positions.csv")
+    # Open or create the file
+    with open(file_path, 'w') as file:
+        estimated_position.to_csv(file)
 
-    est_copy['lat_est'] = pd.to_numeric(est['lat_est'], errors='coerce')
-    est_copy['lon_est'] = pd.to_numeric(est['lon_est'], errors='coerce')
+    # Getting statistical information of the results
+    est_copy = estimated_position.copy()
+    # Converting all the nonnumeric values to nan
+    est_copy['lat'] = pd.to_numeric(estimated_position['lat'], errors='coerce')
+    est_copy['lon'] = pd.to_numeric(estimated_position['lon'], errors='coerce')
 
-    r_woNan = est_copy.dropna(subset=['lat_est'])
+    r_woNan = est_copy.dropna(subset=['lat'])
     actual_pos_2 = r_woNan[['lat', 'lon']].to_numpy()
-    est_pos = r_woNan[['lat_est', 'lon_est']].to_numpy()    
+    est_pos = r_woNan[['lat', 'lon']].to_numpy()
 
     estimation_error = calculate_pairwise_error_list(ground_truth=actual_pos_2, predictions=est_pos)
 
@@ -146,6 +158,7 @@ def main():
     print(f'max {max(y)}')
     print(f'mean {np.mean(y)}')
     print(f'median {np.median(y)}')
+
 
 if __name__=='__main__':
     main()
