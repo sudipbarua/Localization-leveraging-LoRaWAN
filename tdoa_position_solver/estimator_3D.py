@@ -33,10 +33,9 @@ class Estimator_3d(Estimator):
                 z0 = measurements[0][2]
                 # We use the pandas timestamp method in this case, 
                 # because it is the only one that can handle precision upto nanosecond
-                diff_seconds = (pd.Timestamp(ti).value - pd.Timestamp(
-                    measurements[0][2]).value) * 1e-9  # the values are converted to seconds
+                diff_seconds = (pd.Timestamp(ti).value - pd.Timestamp(measurements[0][3]).value) * 1e-9  # the values are converted to seconds
                 di = diff_seconds * self.speed
-                ai = np.sqrt((x - xi)**2 + (y - yi)**2 + (z - zi)**2) - np.sqrt((x - x0)**2 + (y - y0)**2 + (z - z0**2)) - abs(di)   # for 3D
+                ai = np.sqrt((x - xi)**2 + (y - yi)**2 + (z - zi)**2) - np.sqrt((x - x0)**2 + (y - y0)**2 + (z - z0)**2) - abs(di)   # for 3D
                 residuals.append(ai)
             return residuals
 
@@ -50,11 +49,11 @@ class Estimator_3d(Estimator):
             for i in range(1, len(measurements)):
                 xi, yi, zi, _ = measurements[i]
                 x0 = measurements[0][0]
-                z0 = measurements[0][2]
                 y0 = measurements[0][1]
-                adx = (x - xi) / np.sqrt((x - xi)**2 + (y - yi)**2 + (z - zi)**2) - (x - x0) / np.sqrt((x - x0)**2 + (y - y0)**2 + (z - z0**2))
-                ady = (y - yi) / np.sqrt((x - xi)**2 + (y - yi)**2 + (z - zi)**2) - (y - y0) / np.sqrt((x - x0)**2 + (y - y0)**2 + (z - z0**2))
-                adz = (z - zi) / np.sqrt((x - xi)**2 + (y - yi)**2 + (z - zi)**2) - (z - z0) / np.sqrt((x - x0)**2 + (y - y0)**2 + (z - z0**2))
+                z0 = measurements[0][2]
+                adx = (x - xi) / np.sqrt((x - xi)**2 + (y - yi)**2 + (z - zi)**2) - (x - x0) / np.sqrt((x - x0)**2 + (y - y0)**2 + (z - z0)**2)
+                ady = (y - yi) / np.sqrt((x - xi)**2 + (y - yi)**2 + (z - zi)**2) - (y - y0) / np.sqrt((x - x0)**2 + (y - y0)**2 + (z - z0)**2)
+                adz = (z - zi) / np.sqrt((x - xi)**2 + (y - yi)**2 + (z - zi)**2) - (z - z0) / np.sqrt((x - x0)**2 + (y - y0)**2 + (z - z0)**2)
                 jac.append([adx, ady, adz])
             return np.array(jac)
         return fn
@@ -83,7 +82,7 @@ class Estimator_3d(Estimator):
             print(f"Optimized (x, y, z): ({x}, {y})")
             # Estimated lat-lon
             lat_est, lon_est, alt_est = pm.enu2geodetic(e=x[0], n=x[1], u=x[2], **self.ref_pos)     # *****Change*****
-
+            print(f'Estimated latitude: {lat_est}, longitude: {lon_est}, altitude: {alt_est}')
             if plot==True:
                 # Creating a list of results for plotting in the map
                 result = {
@@ -107,7 +106,7 @@ class Estimator_3d(Estimator):
 
 def main():
     ##################### Testing script ###########################
-    with open('../data/tuc_lora_metadata.mqtt_data_13-11.json') as file1:
+    with open('../data/tuc_lora_metadata.mqtt_data_22-27_4gw.json') as file1:
         ds_json = json.load(file1)
     # ds_json = pd.read_json('data/tuc_lora_metadata.mqtt_data_13-11.json')
     # gw_loc = pd.read_json('data/lorawan_antwerp_gateway_locations.json')
@@ -116,7 +115,7 @@ def main():
 
     ref_pos = {'lat0': 50.814131,
             'lon0': 12.928044,
-            'h0': 0}
+            'h0': 320}
     result_directory = f'results/lstsq_3D/{datetime.now().strftime('%Y-%m-%d_%H-%M')}'
     # Ensure the result_directory exists
     if not os.path.exists(result_directory):
@@ -128,7 +127,7 @@ def main():
     for packet in ds_json:
         est = estimator.estimate(packet=packet,
                                  gateways=gw_loc,
-                                 plot=True)
+                                 plot=False)
         estimated_position.append(est)
 
     estimated_position = pd.DataFrame(estimated_position, columns=['lat', 'lon', 'alt'])

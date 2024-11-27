@@ -66,8 +66,8 @@ def map_plot(df, zoom=15):
                             lon='lon', 
                             color_continuous_scale=color_scale,
                             zoom=zoom, 
-                            height=600,
-                            width=600)
+                            height=1100,
+                            width=1100)
 
     fig.update_layout(mapbox_style="open-street-map")
     fig.update_layout(margin={"r":0,"t":0,"l":0,"b":0})
