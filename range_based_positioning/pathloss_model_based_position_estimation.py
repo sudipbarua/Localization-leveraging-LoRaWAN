@@ -78,12 +78,31 @@ def main():
     estimator = PLPositioningEngine_OkumuraHata(reference_position=ref_pos, gateways=gateways,
                                                 result_directory=result_directory)
 
-    for packet in data:
+    result_json = []
+    for i, packet in enumerate(data):
         if len(packet['gateways']) >= 3:
-            lat, lon, _ = estimator.estimate(packet, plot=True)
-
+            ################ Estimation starts #####################
+            lat_est, lon_est, _ = estimator.estimate(packet, packet_ref=i, plot=False)
+            # Collecting ground truth values
+            lat, lon = packet['latitude'], packet['longitude']
+            # calculate the estimation error
+            try:
+                est_er = haversine(tuple([lat, lon]),tuple([lat_est, lon_est]))*1000  # multiplying by 1000 to transform from Km to m
+            except:
+                est_er = None
+            print(f'Estimation error: {est_er}')
+            new_data = {'lat': lat, 'lon': lon, 'lat_est': lat_est, 'lon_est': lon_est, 'Estimation Error': est_er}
+            # Collect the coordinates of the receiving gateways
+            for i, gw in enumerate(estimator.gateway_lat_lon):
+                new_data[f'gw_{i}'] = {}
+                new_data[f'gw_{i}']['lat'], new_data[f'gw_{i}']['lon'] = gw
+            result_json.append(new_data)
         else: 
             print('Position cannot be solved: expected Number of reciveing gateways is at least 3')
+
+    # Save the results
+    with open(f"{result_directory}/result.json", "w") as file:
+        json.dump(result_json, file, indent=4)  # 'indent=4' makes the file human-readable
 
     
 

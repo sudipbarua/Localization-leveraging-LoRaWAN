@@ -6,6 +6,7 @@ import pymap3d as pm
 import scipy.optimize as opt
 import json
 import os
+from haversine import haversine
 from datetime import datetime
 import sys
 sys.path.append('D:/work_dir/Datasets/LoRa_anomaly-detection')
@@ -183,7 +184,7 @@ class RangeBasedEstimator:
                 return 867.7
             case 8:
                 return 867.9
-            case 9:
+            case _:
                 return 868.8
 
 
@@ -206,15 +207,15 @@ class RangeBasedEstimator:
         return np.mean(gw_pos, axis=0)
     
     
-    def estimate(self, packet, plot=False):
+    def estimate(self, packet, packet_ref, plot=False):
         # list of position of the gateways in ENU format
         try:
-            self.gw_cord_collector(packet) 
+            self.gw_cord_collector(packet)
         except:
             print('Gateway coordinates are unavailable')
             return None, None, None
-        
-        # Initital position for estimation 
+
+        # Initital position for estimation
         init_pos = self.initial_position(self.gateway_coordinates_enu)
         distances = self.range_calculator(packet)  # returns an array of ranges from
 
@@ -240,7 +241,7 @@ class RangeBasedEstimator:
             directory = os.path.join(self.result_dir, 'map_plot')
             if not os.path.exists(directory):
                 os.makedirs(directory)
-            file_path = os.path.join(directory, f"{packet['deduplicationId']}.png")
+            file_path = os.path.join(directory, f"{packet_ref}.png")
             map_plot_cartopy(result, path=file_path)
 
         return [lat_est, lon_est, alt_est]
