@@ -23,8 +23,9 @@ class PLPositioningEngine_COST231(RangeBasedEstimator):
 
 
 class PLPositioningEngine_OkumuraHata(RangeBasedEstimator):
-    def __init__(self, reference_position, gateways, path_loss_exponent, reference_distance, reference_rssi):
-        super().__init__(reference_position, gateways, path_loss_exponent, reference_distance, reference_rssi)
+    def __init__(self, reference_position, gateways, result_directory):
+        super().__init__(reference_position, gateways, None, None, None,
+                         result_directory)
 
     def range_calculator(self, pkt):
         R = []
@@ -36,20 +37,28 @@ class PLPositioningEngine_OkumuraHata(RangeBasedEstimator):
         f = self.channel_mapper(pkt['channel'])  # frequency in MHz
 
         for gw in pkt['gateways']:
-            RSSI = gw('rssi') 
-            SNR = gw('snr')
+            RSSI = gw['rssi']
+            SNR = gw['snr']
 
             # implementing range calculation from Okumura-Hata path loss model
             A = 69.55 + 26.161 * math.log10(f) - 13.82 * math.log10(h_b) - 3.2*(math.log10(11.75 * h_m))**2 + 4.97
             B = 44.9 - 6.55 * math.log10(h_b)
-            c = 5.4 + 2(math.log10(f/28))**2
-            D = 40.94 + 4.78(math.log10(f))**2 - 18.33*math.log10(f)
+            c = 5.4 + 2 * (math.log10(f/28))**2
+            D = 40.94 + 4.78 * (math.log10(f))**2 - 18.33*math.log10(f)
 
-            L = P_tx + G_tx + G_rx + 10 * math.log10(1 + 1/SNR) - RSSI
+            # Some fixed parameters
+            P_tx = 14
+            G_rx = 3
+            G_tx = 2
+            # To avoid divided by zero error we use an adjustment value epsilon to SNR
+            if SNR==0:
+                SNR = 1e-10
+            # We use the pathloss calculated from the RSSI SNR since we cannot measure pathloss
+            L = P_tx + G_tx + G_rx + 10 * np.log10(1 + 1/SNR) - RSSI
 
-            d = 10 ** ((L-A)/B)
+            d = 10 ** ((L-A)/B) * 1000
             R.append(d)
-
+        return R
 
 
 def main():
@@ -61,16 +70,17 @@ def main():
 
     ref_pos = {'lat0': 51.260644,
         'lon0': 4.370656,
-        'h0': 0}
-    
-    estimator = PLPositioningEngine_OkumuraHata(reference_position=ref_pos, gateways=gateways, 
-                                    reference_distance=4.709445557884708,
-                                    reference_rssi=-60,
-                                    path_loss_exponent=0.4057)
-    
+        'h0': 10}  # The alitude of Antwerp Belgium is 10m above sea level
+    result_directory = f'results/pl_model_okumura_hata/{datetime.now().strftime('%Y-%m-%d_%H-%M')}'
+    # Ensure the result_directory exists
+    if not os.path.exists(result_directory):
+        os.makedirs(result_directory)
+    estimator = PLPositioningEngine_OkumuraHata(reference_position=ref_pos, gateways=gateways,
+                                                result_directory=result_directory)
+
     for packet in data:
         if len(packet['gateways']) >= 3:
-            lat, lon, _ = estimator.estimate(packet)
+            lat, lon, _ = estimator.estimate(packet, plot=True)
 
         else: 
             print('Position cannot be solved: expected Number of reciveing gateways is at least 3')

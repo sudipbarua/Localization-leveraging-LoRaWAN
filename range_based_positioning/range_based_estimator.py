@@ -5,19 +5,23 @@ import pandas as pd
 import pymap3d as pm
 import scipy.optimize as opt
 import json
-
+import os
+from datetime import datetime
 import sys
 sys.path.append('D:/work_dir/Datasets/LoRa_anomaly-detection')
-from RSSI_fingerprinting_TDoA_Estimation.data_preprocess import DataPreprocess
+from general_functions import *   # We are going to use the 'map_plot_cartopy' method
+from RSSI_fingerprinting_TDoA_Estimation.performance_eval import calculate_pairwise_error_list
 
 
 class RangeBasedEstimator:
-    def __init__(self, reference_position, gateways, path_loss_exponent, reference_distance, reference_rssi):
+    def __init__(self, reference_position, gateways, path_loss_exponent, reference_distance,
+                 reference_rssi, result_directory):
         self.reference_position = reference_position
         self.gateways = gateways  # The list of known coordinates of the receiving gateways
         self.path_loss_exponent = path_loss_exponent
         self.reference_distance = reference_distance
         self.reference_rssi = reference_rssi
+        self.result_dir = result_directory
 
     def packet_perser(self):
         pass
@@ -26,9 +30,9 @@ class RangeBasedEstimator:
         gw_pos_enu = []
         gw_lat_lon = []
         for gateway in pkt['gateways']:
-            lat = self.gateways[gateway['id']['latitude']]
-            lon = self.gateways[gateway['id']['longitude']]
-            x, y, z = pm.geodetic2enu(lat=lat, lon=lon, h=0, **self.reference_position)
+            lat = self.gateways[gateway['id']]['latitude']
+            lon = self.gateways[gateway['id']]['longitude']
+            x, y, z = pm.geodetic2enu(lat=lat, lon=lon, h=30, **self.reference_position)
             gw_pos_enu.append([x,y,z])
             gw_lat_lon.append([lat, lon])
         
@@ -123,7 +127,7 @@ class RangeBasedEstimator:
             return None  # No width data available
 
 
-    def residual_function(self, measurements, range):
+    def residual_function(self, measurements, distances):
         """
         input measurements format = [[x0, y0, z0],
                                      [x1, y1, z1],
@@ -136,8 +140,8 @@ class RangeBasedEstimator:
             x, y = args[:2]  # Extract x and y coordinates from args. Usually these are the initial coordinates (initialization for least sq estimation)
             residuals = []
             for i in range(len(measurements)):
-                xi, yi = measurements[i]
-                res_i = np.sqrt((x - xi)**2 + (y - yi)**2) - range[i]
+                xi, yi, _ = measurements[i]
+                res_i = np.sqrt((x - xi)**2 + (y - yi)**2) - distances[i]
                 residuals.append(res_i)
             return residuals
         return fn
@@ -146,8 +150,8 @@ class RangeBasedEstimator:
         def fn(args):
             x, y = args[:2]  # Extract x and y coordinates from args
             jac = []
-            for i in range(1, len(measurements)):
-                xi, yi = measurements[i]
+            for i in range(len(measurements)):
+                xi, yi, _ = measurements[i]
                 res_dx = (x - xi) / np.sqrt((x - xi)**2 + (y - yi)**2) 
                 res_dy = (y - yi) / np.sqrt((x - xi)**2 + (y - yi)**2) 
                 jac.append([res_dx, res_dy])
@@ -199,10 +203,10 @@ class RangeBasedEstimator:
 
     def initial_position(self, gw_pos):
         # center of the polygon created by the GWs 
-        return np.mean(gw_pos, axis=0) 
+        return np.mean(gw_pos, axis=0)
     
     
-    def estimate(self, packet):
+    def estimate(self, packet, plot=False):
         # list of position of the gateways in ENU format
         try:
             self.gw_cord_collector(packet) 
@@ -212,21 +216,34 @@ class RangeBasedEstimator:
         
         # Initital position for estimation 
         init_pos = self.initial_position(self.gateway_coordinates_enu)
-
-        measurements = np.c_[self.gateway_coordinates_enu[:, [0,2]]]
-
-        distances = self.range_calculator(packet)  # returns an array of ranges from 
+        distances = self.range_calculator(packet)  # returns an array of ranges from
 
         # Define functions and jacobian
-        F = self.residual_function(measurements, distances)
-        J = self.jacobian_of_residual(measurements)
+        F = self.residual_function(self.gateway_coordinates_enu, distances)
+        J = self.jacobian_of_residual(self.gateway_coordinates_enu)
 
         # Perform least squares optimization
-        x, y = opt.leastsq(func=F, x0=init_pos, Dfun=J)
+        x, y = opt.leastsq(func=F, x0=init_pos[:2], Dfun=J)
 
         print(f"Optimized (x, y): ({x}, {y})")
         # Estimated lat-lon 
-        return pm.enu2geodetic(e=x[0], n=x[1], u=0, **self.reference_position)
+        lat_est, lon_est, alt_est = pm.enu2geodetic(e=x[0], n=x[1], u=30, **self.reference_position)
+
+        if plot == True:
+            # Creating a list of results for plotting in the map
+            result = {
+                'lat': [lat_est] + [self.gateway_lat_lon[i][0] for i in range(len(self.gateway_lat_lon))],
+                'lon': [lon_est] + [self.gateway_lat_lon[i][1] for i in range(len(self.gateway_lat_lon))],
+                'cat': ['Estimated Pos'] + [f'GW Positions' for i in range(len(self.gateway_lat_lon))]
+            }
+            # map plot for individual predictions and estimations
+            directory = os.path.join(self.result_dir, 'map_plot')
+            if not os.path.exists(directory):
+                os.makedirs(directory)
+            file_path = os.path.join(directory, f"{packet['deduplicationId']}.png")
+            map_plot_cartopy(result, path=file_path)
+
+        return [lat_est, lon_est, alt_est]
 
             
 def main():
@@ -238,12 +255,17 @@ def main():
 
     ref_pos = {'lat0': 51.260644,
         'lon0': 4.370656,
-        'h0': 0}
-    
+        'h0': 10}
+    result_directory = f'results/pl_model_friss/{datetime.now().strftime('%Y-%m-%d_%H-%M')}'
+    # Ensure the result_directory exists
+    if not os.path.exists(result_directory):
+        os.makedirs(result_directory)
+
     estimator = RangeBasedEstimator(reference_position=ref_pos, gateways=gateways, 
                                     reference_distance=4.709445557884708,
                                     reference_rssi=-60,
-                                    path_loss_exponent=0.4057)
+                                    path_loss_exponent=0.4057,
+                                    result_directory=result_directory)
     
     for packet in data:
         if len(packet['gateways']) >= 3:
