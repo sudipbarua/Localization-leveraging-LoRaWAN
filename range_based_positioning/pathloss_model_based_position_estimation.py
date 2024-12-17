@@ -1,25 +1,47 @@
 import math
+
+import numpy as np
+
 from range_based_estimator import *
 
 
 class PLPositioningEngine_COST231(RangeBasedEstimator):
-    def __init__(self):
-        super().__init__()
+    def __init__(self, reference_position, gateways, result_directory):
+        super().__init__(reference_position, gateways, None, None, None,
+                         result_directory)
     
-    def packet_perser(self):
-        pass
-    
-    # def gw_cord_collector(self, pkt):
-        # pass
-
-    def link_budget_param_collector(self):
-        pass
-
-    def weather_info_collector(self):
-        pass
-
     def range_calculator(self, pkt):
-        pass  
+        R = []
+        # Some fixed parameters
+        P_tx = 14
+        G_rx = 3
+        G_tx = 2
+        b =             # Average building separation
+        w =             # Width of streets
+        del_h_roof =    # Height difference between the
+        # Correction factors
+        k_a = 54    # For urban
+        k_d = 18    # For urban
+        k_f = 4 + 0.7 * (del_h_roof / 10)
+        f = self.channel_mapper(pkt['channel'])  # frequency in MHz
+        for gw in pkt['gateways']:
+            RSSI = gw['rssi']
+            SNR = gw['snr']
+            if SNR==0:
+                SNR = 1e-10
+            # We use the pathloss calculated from the RSSI SNR since we cannot measure pathloss
+            L = P_tx + G_tx + G_rx + 10 * np.log10(1 + 1/SNR) - RSSI
+            # Roof to street Diffraction and scatter loss
+            L_rts = - 16.9 - 10 * np.log10(w) + 10 * np.log10(f) + 20 * np.log10(del_h_roof)
+            # From Multiscreen diffraction error L_msd = L_b + k_a + k_d * np.log10(d) + k_f * np.log10(f) - 9 * np.log10(b)
+            L_b = 18 * np.log10(1 + del_h_roof)
+            A = L_b + k_a + k_f * np.log10(f) - 9 * np.log10(b)
+            # From Free space path loss L_free = B + 20 * np.log10(d)
+            B = 20 * np.log10(f)
+            d = 10 ** ((L - B - A - L_rts) / (20 + k_d)) * 1000  # Distance calculation from path loss model L = L_free + L_rts + L_msd
+            # Suburban environment
+            R.append(d)
+        return R
 
 
 class PLPositioningEngine_OkumuraHata(RangeBasedEstimator):
@@ -35,28 +57,29 @@ class PLPositioningEngine_OkumuraHata(RangeBasedEstimator):
         h_b = 30                                 # The height of the base station 
         h_m = 1                                  # height of the mobile station
         f = self.channel_mapper(pkt['channel'])  # frequency in MHz
-
+        # implementing range calculation from Okumura-Hata path loss model
+        A = 69.55 + 26.161 * math.log10(f) - 13.82 * math.log10(h_b) - 3.2 * (math.log10(11.75 * h_m)) ** 2 + 4.97
+        B = 44.9 - 6.55 * math.log10(h_b)
+        c = 5.4 + 2 * (math.log10(f / 28)) ** 2
+        D = 40.94 + 4.78 * (math.log10(f)) ** 2 - 18.33 * math.log10(f)
+        # Some fixed parameters
+        P_tx = 14
+        G_rx = 3
+        G_tx = 2
+        # To avoid divided by zero error we use an adjustment value epsilon to SNR
         for gw in pkt['gateways']:
             RSSI = gw['rssi']
             SNR = gw['snr']
-
-            # implementing range calculation from Okumura-Hata path loss model
-            A = 69.55 + 26.161 * math.log10(f) - 13.82 * math.log10(h_b) - 3.2*(math.log10(11.75 * h_m))**2 + 4.97
-            B = 44.9 - 6.55 * math.log10(h_b)
-            c = 5.4 + 2 * (math.log10(f/28))**2
-            D = 40.94 + 4.78 * (math.log10(f))**2 - 18.33*math.log10(f)
-
-            # Some fixed parameters
-            P_tx = 14
-            G_rx = 3
-            G_tx = 2
-            # To avoid divided by zero error we use an adjustment value epsilon to SNR
             if SNR==0:
                 SNR = 1e-10
             # We use the pathloss calculated from the RSSI SNR since we cannot measure pathloss
             L = P_tx + G_tx + G_rx + 10 * np.log10(1 + 1/SNR) - RSSI
-
-            d = 10 ** ((L-A)/B) * 1000
+            # with model for Urban environment
+            d = 10 ** ((L-A)/B) * 1000  # Distance calculation from path loss model
+            # Suburban environment
+            # d = 10 ** ((L-A+c)/B) * 1000
+            # Rural environment
+            # d = 10 ** ((L-A+D)/B) * 1000
             R.append(d)
         return R
 

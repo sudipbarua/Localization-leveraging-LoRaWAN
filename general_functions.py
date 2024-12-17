@@ -15,6 +15,12 @@ def map_plot_cartopy(result, path):
         'lon': [row['lon'], lon_est, row['pred_lon']] + [gw_lat_lon[i][1] for i in range(len(gw_lat_lon))],
         'cat': ['Actual Pos', 'Estimated Pos', 'ML Predicted Pos'] + [f'GW Positions' for i in range(len(gw_lat_lon))]
     }
+
+             lat        lon            cat
+             51.207600  4.391449    Estimated Pos
+             51.205795  4.398465    GW Positions
+             51.201900  4.395436    GW Positions
+             51.197487  4.406706    GW Positions
     """
 
     # Convert the data to a DataFrame
