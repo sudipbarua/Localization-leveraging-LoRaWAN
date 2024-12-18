@@ -146,7 +146,7 @@ class RangeBasedEstimator:
                 residuals.append(res_i)
             return residuals
         return fn
-    
+
     def jacobian_of_residual(self, measurements):
         def fn(args):
             x, y = args[:2]  # Extract x and y coordinates from args
@@ -158,7 +158,6 @@ class RangeBasedEstimator:
                 jac.append([res_dx, res_dy])
             return np.array(jac)
         return fn
-
 
     def weather_info_collector(self):
         pass
@@ -196,7 +195,7 @@ class RangeBasedEstimator:
         d_0 = self.reference_distance
 
         for gw in pkt['gateways']:
-            rssi = gw('rssi')
+            rssi = gw['rssi']
             d = d_0 * 10 ** ( (rssi_0 - rssi) / 10 * beta )
             R.append(d)
         
@@ -206,7 +205,20 @@ class RangeBasedEstimator:
         # center of the polygon created by the GWs 
         return np.mean(gw_pos, axis=0)
     
-    
+    def plot_in_map(self, lat_est, lon_est, packet_ref):
+        # Creating a list of results for plotting in the map
+        result = {
+            'lat': [lat_est] + [self.gateway_lat_lon[i][0] for i in range(len(self.gateway_lat_lon))],
+            'lon': [lon_est] + [self.gateway_lat_lon[i][1] for i in range(len(self.gateway_lat_lon))],
+            'cat': ['Estimated Pos'] + [f'GW Positions' for i in range(len(self.gateway_lat_lon))]
+        }
+        # map plot for individual predictions and estimations
+        directory = os.path.join(self.result_dir, 'map_plot')
+        if not os.path.exists(directory):
+            os.makedirs(directory)
+        file_path = os.path.join(directory, f"{packet_ref}.png")
+        map_plot_cartopy(result, path=file_path)
+
     def estimate(self, packet, packet_ref, plot=False):
         # list of position of the gateways in ENU format
         try:
@@ -218,32 +230,84 @@ class RangeBasedEstimator:
         # Initital position for estimation
         init_pos = self.initial_position(self.gateway_coordinates_enu)
         distances = self.range_calculator(packet)  # returns an array of ranges from
-
         # Define functions and jacobian
         F = self.residual_function(self.gateway_coordinates_enu, distances)
         J = self.jacobian_of_residual(self.gateway_coordinates_enu)
-
-        # Perform least squares optimization
-        x, y = opt.leastsq(func=F, x0=init_pos[:2], Dfun=J)
-
-        print(f"Optimized (x, y): ({x}, {y})")
-        # Estimated lat-lon 
+        # Perform least squares optimization for 2D
+        x, _ = opt.leastsq(func=F, x0=init_pos[:2], Dfun=J)
+        print(f"Optimized (x, y): ({x})")
+        # Estimated lat-lon
         lat_est, lon_est, alt_est = pm.enu2geodetic(e=x[0], n=x[1], u=30, **self.reference_position)
+        if plot == True:
+            self.plot_in_map(lat_est, lon_est, packet_ref)
+
+        return [lat_est, lon_est, alt_est]
+
+
+class RangeBasedEstimator_3d(RangeBasedEstimator):
+    def __init__(self, reference_position, gateways, path_loss_exponent, reference_distance,
+                 reference_rssi, result_directory):
+        super().__init__(reference_position, gateways, path_loss_exponent, reference_distance,
+                 reference_rssi, result_directory)
+
+    def residual_function(self, measurements, distances):
+        def fn(args):
+            # Here the args are the arguments passed to the leastsq estimator method
+            x, y, z = args[:3]  # Extract x and y coordinates from args. Usually these are the initial coordinates (initialization for least sq estimation)
+            residuals = []
+            for i in range(len(measurements)):
+                xi, yi, zi = measurements[i]
+                res_i = np.sqrt((x - xi) ** 2 + (y - yi) ** 2 + (z - zi) ** 2) - distances[i]
+                residuals.append(res_i)
+            return residuals
+        return fn
+
+    def jacobian_of_residual(self, measurements):
+        def fn(args):
+            x, y, z = args[:3]  # Extract x and y coordinates from args
+            jac = []
+            for i in range(len(measurements)):
+                xi, yi, zi = measurements[i]
+                res_dx = (x - xi) / np.sqrt((x - xi)**2 + (y - yi)**2 + (z - zi)**2)
+                res_dy = (y - yi) / np.sqrt((x - xi)**2 + (y - yi)**2 + (z - zi)**2)
+                res_dz = (z - zi) / np.sqrt((x - xi)**2 + (y - yi)**2 + (z - zi)**2)
+                jac.append([res_dx, res_dy, res_dz])
+            return np.array(jac)
+        return fn
+
+    def estimate(self, packet, packet_ref, plot=False):
+        # list of position of the gateways in ENU format
+        try:
+            self.gw_cord_collector(packet)
+        except:
+            print('Gateway coordinates are unavailable')
+            return None, None, None
+
+        # Initital position for estimation
+        init_pos = self.initial_position(self.gateway_coordinates_enu)
+        distances = self.range_calculator(packet)  # returns an array of ranges from
+        # Define functions and jacobian for 3D
+        F = self.residual_function(self.gateway_coordinates_enu, distances)
+        J = self.jacobian_of_residual(self.gateway_coordinates_enu)
+        # x, _ = opt.leastsq(func=F, x0=init_pos, Dfun=J)
+        # print(f"Optimized (x, y): ({x})")
+        # lower_bounds = [-np.inf, -np.inf, 0]
+        lower_bounds = [init_pos[0] - 2500, init_pos[1] - 2500, 0]
+        # upper_bounds = [np.inf, np.inf, 1000]
+        upper_bounds = [init_pos[0] + 2500, init_pos[1] + 2500, 1000]
+        try:
+            solution = opt.least_squares(fun=F, x0=init_pos, jac=J, bounds=(lower_bounds, upper_bounds))
+        except Exception as e:
+            print(e)
+            return [None, None, None]
+        print(f"Optimized (x, y): ({solution.x})")
+        # Estimated lat-lon
+        # lat_est, lon_est, alt_est = pm.enu2geodetic(e=x[0], n=x[1], u=x[2], **self.reference_position)
+        lat_est, lon_est, alt_est = pm.enu2geodetic(e=solution.x[0], n=solution.x[1], u=solution.x[2],
+                                                        **self.reference_position)
 
         if plot == True:
-            # Creating a list of results for plotting in the map
-            result = {
-                'lat': [lat_est] + [self.gateway_lat_lon[i][0] for i in range(len(self.gateway_lat_lon))],
-                'lon': [lon_est] + [self.gateway_lat_lon[i][1] for i in range(len(self.gateway_lat_lon))],
-                'cat': ['Estimated Pos'] + [f'GW Positions' for i in range(len(self.gateway_lat_lon))]
-            }
-            # map plot for individual predictions and estimations
-            directory = os.path.join(self.result_dir, 'map_plot')
-            if not os.path.exists(directory):
-                os.makedirs(directory)
-            file_path = os.path.join(directory, f"{packet_ref}.png")
-            map_plot_cartopy(result, path=file_path)
-
+            self.plot_in_map(lat_est, lon_est, packet_ref)
         return [lat_est, lon_est, alt_est]
 
             
@@ -268,9 +332,9 @@ def main():
                                     path_loss_exponent=0.4057,
                                     result_directory=result_directory)
     
-    for packet in data:
+    for i, packet in enumerate(data):
         if len(packet['gateways']) >= 3:
-            lat, lon, _ = estimator.estimate(packet)
+            lat, lon, _ = estimator.estimate(packet, i)
 
         else: 
             print('Position cannot be solved: expected Number of reciveing gateways is at least 3')

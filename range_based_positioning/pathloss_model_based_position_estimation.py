@@ -1,24 +1,28 @@
 import math
-
 import numpy as np
-
 from range_based_estimator import *
-
+from types import MethodType
 
 class PLPositioningEngine_COST231(RangeBasedEstimator):
-    def __init__(self, reference_position, gateways, result_directory):
+    def __init__(self, reference_position, gateways, result_directory, positioning_type='2d'):
         super().__init__(reference_position, gateways, None, None, None,
                          result_directory)
-    
+        if positioning_type=='2d':
+            self.estimate = MethodType(RangeBasedEstimator.estimate, self)  # Using MethodType to bind method to the corresponding class
+        elif positioning_type=='3d':
+            self.estimate = MethodType(RangeBasedEstimator_3d.estimate, self)
+            self.jacobian_of_residual = MethodType(RangeBasedEstimator_3d.jacobian_of_residual, self)
+            self.residual_function = MethodType(RangeBasedEstimator_3d.residual_function, self)
+
     def range_calculator(self, pkt):
         R = []
         # Some fixed parameters
         P_tx = 14
         G_rx = 3
         G_tx = 2
-        b =             # Average building separation
-        w =             # Width of streets
-        del_h_roof =    # Height difference between the
+        b = 30            # Average building separation
+        w = 3            # Width of streets
+        del_h_roof = 2   # Height difference between the
         # Correction factors
         k_a = 54    # For urban
         k_d = 18    # For urban
@@ -45,9 +49,15 @@ class PLPositioningEngine_COST231(RangeBasedEstimator):
 
 
 class PLPositioningEngine_OkumuraHata(RangeBasedEstimator):
-    def __init__(self, reference_position, gateways, result_directory):
+    def __init__(self, reference_position, gateways, result_directory, positioning_type='2d'):
         super().__init__(reference_position, gateways, None, None, None,
                          result_directory)
+        if positioning_type=='2d':
+            self.estimate = MethodType(RangeBasedEstimator.estimate, self)  # Using MethodType to bind method to the corresponding class
+        elif positioning_type=='3d':
+            self.estimate = MethodType(RangeBasedEstimator_3d.estimate, self)
+            self.jacobian_of_residual = MethodType(RangeBasedEstimator_3d.jacobian_of_residual, self)
+            self.residual_function = MethodType(RangeBasedEstimator_3d.residual_function, self)
 
     def range_calculator(self, pkt):
         R = []
@@ -84,6 +94,7 @@ class PLPositioningEngine_OkumuraHata(RangeBasedEstimator):
         return R
 
 
+
 def main():
     with open('D:/work_dir/Datasets/LoRa_anomaly-detection/data/lorawan_antwerp_2019_dataset.json', 'r') as file1:
         data = json.load(file1)
@@ -94,18 +105,23 @@ def main():
     ref_pos = {'lat0': 51.260644,
         'lon0': 4.370656,
         'h0': 10}  # The alitude of Antwerp Belgium is 10m above sea level
-    result_directory = f'results/pl_model_okumura_hata/{datetime.now().strftime('%Y-%m-%d_%H-%M')}'
+    result_directory = f'results/pl_model_COST231_3d_with_boundaries/{datetime.now().strftime('%Y-%m-%d_%H-%M')}'
     # Ensure the result_directory exists
     if not os.path.exists(result_directory):
         os.makedirs(result_directory)
     estimator = PLPositioningEngine_OkumuraHata(reference_position=ref_pos, gateways=gateways,
                                                 result_directory=result_directory)
+    # estimator_3d = PLPositioningEngine_OkumuraHata(reference_position=ref_pos, gateways=gateways,
+    #                                             result_directory=result_directory, positioning_type='3d')
+    estimator_3d = PLPositioningEngine_COST231(reference_position=ref_pos, gateways=gateways,
+                                                result_directory=result_directory, positioning_type='3d')
 
     result_json = []
     for i, packet in enumerate(data):
-        if len(packet['gateways']) >= 3:
+        if len(packet['gateways']) >= 4:
             ################ Estimation starts #####################
-            lat_est, lon_est, _ = estimator.estimate(packet, packet_ref=i, plot=False)
+            # lat_est, lon_est, _ = estimator.estimate(packet, packet_ref=i, plot=False)
+            lat_est, lon_est, _ = estimator_3d.estimate(packet=packet, packet_ref=i, plot=False)
             # Collecting ground truth values
             lat, lon = packet['latitude'], packet['longitude']
             # calculate the estimation error
@@ -116,12 +132,13 @@ def main():
             print(f'Estimation error: {est_er}')
             new_data = {'lat': lat, 'lon': lon, 'lat_est': lat_est, 'lon_est': lon_est, 'Estimation Error': est_er}
             # Collect the coordinates of the receiving gateways
-            for i, gw in enumerate(estimator.gateway_lat_lon):
+            # for i, gw in enumerate(estimator.gateway_lat_lon):
+            for i, gw in enumerate(estimator_3d.gateway_lat_lon):
                 new_data[f'gw_{i}'] = {}
                 new_data[f'gw_{i}']['lat'], new_data[f'gw_{i}']['lon'] = gw
             result_json.append(new_data)
         else: 
-            print('Position cannot be solved: expected Number of reciveing gateways is at least 3')
+            print('Position cannot be solved: expected Number of reciveing gateways is at least 4')
 
     # Save the results
     with open(f"{result_directory}/result.json", "w") as file:
