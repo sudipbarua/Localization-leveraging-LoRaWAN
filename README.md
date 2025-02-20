@@ -1,4 +1,3 @@
-# LoRa_anomaly-detection
-In this project, we will develop a pipeline for detecting anomalies in LoRaWAN networks.
+# Data Collection in riotdb machine
 
-![image](https://github.com/sudipbarua/LoRa_anomaly-detection/assets/49356729/5d8c805a-03a6-40b3-901f-b7a22fe2ab2c)
+![image](https://github.com/user-attachments/assets/03260b27-acc5-4ad8-adf4-c6d3aa89d9de)
