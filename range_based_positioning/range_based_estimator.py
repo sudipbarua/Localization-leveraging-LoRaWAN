@@ -233,11 +233,22 @@ class RangeBasedEstimator:
         # Define functions and jacobian
         F = self.residual_function(self.gateway_coordinates_enu, distances)
         J = self.jacobian_of_residual(self.gateway_coordinates_enu)
+        
+        lower_bounds = [init_pos[0] - 2500, init_pos[1] - 2500]
+        upper_bounds = [init_pos[0] + 2500, init_pos[1] + 2500]
         # Perform least squares optimization for 2D
-        x, _ = opt.leastsq(func=F, x0=init_pos[:2], Dfun=J)
-        print(f"Optimized (x, y): ({x})")
+        try:
+            solution = opt.least_squares(fun=F, x0=init_pos[:2], jac=J, 
+                                 bounds=(lower_bounds, upper_bounds), 
+                                 method='trf', tr_solver='lsmr')
+        except Exception as e:
+            print(e)
+            return [None, None, None]
+        print(f"Optimized (x, y): ({solution.x})")
         # Estimated lat-lon
-        lat_est, lon_est, alt_est = pm.enu2geodetic(e=x[0], n=x[1], u=30, **self.reference_position)
+        lat_est, lon_est, alt_est = pm.enu2geodetic(e=solution.x[0], 
+                                                    n=solution.x[1], 
+                                                    u=30, **self.reference_position)
         if plot == True:
             self.plot_in_map(lat_est, lon_est, packet_ref)
 
@@ -292,11 +303,12 @@ class RangeBasedEstimator_3d(RangeBasedEstimator):
         # x, _ = opt.leastsq(func=F, x0=init_pos, Dfun=J)
         # print(f"Optimized (x, y): ({x})")
         # lower_bounds = [-np.inf, -np.inf, 0]
-        lower_bounds = [init_pos[0] - 2500, init_pos[1] - 2500, 0]
+        lower_bounds = [init_pos[0] - 5000, init_pos[1] - 5000, 0]
         # upper_bounds = [np.inf, np.inf, 1000]
-        upper_bounds = [init_pos[0] + 2500, init_pos[1] + 2500, 1000]
+        upper_bounds = [init_pos[0] + 5000, init_pos[1] + 5000, 1000]
         try:
-            solution = opt.least_squares(fun=F, x0=init_pos, jac=J, bounds=(lower_bounds, upper_bounds))
+            solution = opt.least_squares(fun=F, x0=init_pos, jac=J, bounds=(lower_bounds, upper_bounds), method='trf',
+                                         tr_solver='lsmr')
         except Exception as e:
             print(e)
             return [None, None, None]
@@ -333,7 +345,7 @@ def main():
                                     result_directory=result_directory)
     
     for i, packet in enumerate(data):
-        if len(packet['gateways']) >= 3:
+        if len(packet['gateways']) >= 4:
             lat, lon, _ = estimator.estimate(packet, i)
 
         else: 

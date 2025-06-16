@@ -10,13 +10,13 @@
 // #define SECRET_APP_EUI "0000000000000000"
 // #define SECRET_APP_KEY "2C9CF658EE0B6B40593F67FFD80D429D"
 
-// // Chirpstack MKR_WAN_3
-// #define SECRET_APP_EUI "067d7907f5bfd461"
-// #define SECRET_APP_KEY "f9770fbdb94d587b9fcf9a2fb36a9c0c"
+// Chirpstack MKR_WAN_3
+#define SECRET_APP_EUI "067d7907f5bfd461"
+#define SECRET_APP_KEY "f9770fbdb94d587b9fcf9a2fb36a9c0c"
 
-// Chirpstack MKR_WAN_1
-#define SECRET_APP_EUI "ae191d11f0415f3c"
-#define SECRET_APP_KEY "9a55a4f5ca4ba607aa0ca2029557d5b5"
+// // Chirpstack MKR_WAN_1
+// #define SECRET_APP_EUI "ae191d11f0415f3c"
+// #define SECRET_APP_KEY "9a55a4f5ca4ba607aa0ca2029557d5b5"
 
 
 // // TTN tuc-mkrwan-1310-4
