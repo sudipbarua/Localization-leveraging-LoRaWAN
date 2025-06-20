@@ -1,4 +1,5 @@
 import math
+from matplotlib.pyplot import plot
 import numpy as np
 from range_based_estimator import *
 from types import MethodType
@@ -105,23 +106,30 @@ def main():
     ref_pos = {'lat0': 51.260644,
         'lon0': 4.370656,
         'h0': 10}  # The alitude of Antwerp Belgium is 10m above sea level
-    result_directory = f'results/pl_model_COST231_3d_with_boundaries/{datetime.now().strftime('%Y-%m-%d_%H-%M')}'
+    result_directory = f'D:/work_dir/Datasets/LoRa_anomaly-detection/range_based_positioning/results/pl_model_OH_2d_tr_solver_lsmr_bound-5k/{datetime.now().strftime('%Y-%m-%d_%H-%M')}'
     # Ensure the result_directory exists
     if not os.path.exists(result_directory):
         os.makedirs(result_directory)
+        print(f"Directory {result_directory} created")
+    else:
+        print(f"Directory {result_directory} already exists")
     estimator = PLPositioningEngine_OkumuraHata(reference_position=ref_pos, gateways=gateways,
                                                 result_directory=result_directory)
     # estimator_3d = PLPositioningEngine_OkumuraHata(reference_position=ref_pos, gateways=gateways,
     #                                             result_directory=result_directory, positioning_type='3d')
-    estimator_3d = PLPositioningEngine_COST231(reference_position=ref_pos, gateways=gateways,
-                                                result_directory=result_directory, positioning_type='3d')
+    # estimator_3d = PLPositioningEngine_COST231(reference_position=ref_pos, gateways=gateways,
+                                                # result_directory=result_directory, positioning_type='3d')
+    # estimator_2d = PLPositioningEngine_COST231(reference_position=ref_pos, gateways=gateways,
+                                                # result_directory=result_directory, positioning_type='2d')
+    estimator_2d = PLPositioningEngine_OkumuraHata(reference_position=ref_pos, gateways=gateways,
+                                                result_directory=result_directory, positioning_type='2d')
 
     result_json = []
     for i, packet in enumerate(data):
-        if len(packet['gateways']) >= 4:
+        if len(packet['gateways']) >= 3:
             ################ Estimation starts #####################
             # lat_est, lon_est, _ = estimator.estimate(packet, packet_ref=i, plot=False)
-            lat_est, lon_est, _ = estimator_3d.estimate(packet=packet, packet_ref=i, plot=False)
+            lat_est, lon_est, _ = estimator_2d.estimate(packet=packet, packet_ref=i, plot=False)
             # Collecting ground truth values
             lat, lon = packet['latitude'], packet['longitude']
             # calculate the estimation error
@@ -133,7 +141,7 @@ def main():
             new_data = {'lat': lat, 'lon': lon, 'lat_est': lat_est, 'lon_est': lon_est, 'Estimation Error': est_er}
             # Collect the coordinates of the receiving gateways
             # for i, gw in enumerate(estimator.gateway_lat_lon):
-            for i, gw in enumerate(estimator_3d.gateway_lat_lon):
+            for i, gw in enumerate(estimator_2d.gateway_lat_lon):
                 new_data[f'gw_{i}'] = {}
                 new_data[f'gw_{i}']['lat'], new_data[f'gw_{i}']['lon'] = gw
             result_json.append(new_data)

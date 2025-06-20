@@ -43,9 +43,10 @@ class Levenberg_marquadt_Estimator(Estimator):
             # Define functions and jacobian
             F = self.function(measurements)
             J = self.jacobian(measurements)
-
+            lower_bounds = [init_pos[0] - 5000, init_pos[1] - 5000, 0]
+            upper_bounds = [init_pos[0] + 5000, init_pos[1] + 5000, 1000]
             # Perform least squares optimization
-            result = opt.least_squares(fun=F, jac=J, x0=init_pos[:2], method='lm')        # For 2D positions
+            result = opt.least_squares(fun=F, jac=J, x0=init_pos[:2], bounds=(lower_bounds, upper_bounds), method='lm')        # For 2D positions
 
             print(f"Optimized (x, y, z): ({result.x})")
             # Estimated lat-lon
@@ -86,7 +87,7 @@ def main():
     ref_pos = {'lat0': 50.814131,
             'lon0': 12.928044,
             'h0': 320}
-    result_directory = f'results/LM_lstsq_2D/{datetime.now().strftime('%Y-%m-%d_%H-%M')}'
+    result_directory = f'results/LM_lstsq_2D_bounded/{datetime.now().strftime('%Y-%m-%d_%H-%M')}'
     # Ensure the result_directory exists
     if not os.path.exists(result_directory):
         os.makedirs(result_directory)

@@ -7,6 +7,7 @@ In this version we will make the data parsing more modularized and suitable for 
 
 # Importing native libraries
 import sys
+from tkinter import NO
 sys.path.append('D:/work_dir/Datasets/LoRa_anomaly-detection')
 from tdoa_position_solver.estimator import *
 from general_functions import *   # We are going to use the 'map_plot_cartopy' method
@@ -59,7 +60,7 @@ class Estimator_3d(Estimator):
         return fn
 
 
-    def estimate(self, packet, gateways, plot=False):
+    def estimate(self, packet, gateways, plot=False, minimizing_algorithm='lm', tr_solver=None, distance_from_init_pos=None):
         self.get_gateway_positions_toa(packet, gateways)
         
         # Initital position for estimation: mean of the gateway coordinates 
@@ -76,13 +77,28 @@ class Estimator_3d(Estimator):
             F = self.function(measurements)
             J = self.jacobian(measurements)# Define functions and jacobian
 
-            # Perform least squares optimization
-            x, y = opt.leastsq(func=F, x0=init_pos, Dfun=J)
+            if distance_from_init_pos is not None:
+                lower_bounds = [init_pos[0] - distance_from_init_pos, init_pos[1] - distance_from_init_pos, 0]
+                upper_bounds = [init_pos[0] + distance_from_init_pos, init_pos[1] + distance_from_init_pos, 1000]
+                bounds = (lower_bounds, upper_bounds) 
+            else:
+                bounds = None  # No bounds if range is not specified
 
-            print(f"Optimized (x, y, z): ({x}, {y})")
+            # Perform least squares optimization
+            try:
+                solution = opt.least_squares(fun=F, jac=J, x0=init_pos, method=minimizing_algorithm,
+                                             tr_solver=tr_solver,
+                                             bounds=bounds) 
+            except Exception as e:
+                print(f"Error during optimization: {e}")
+                return [None, None, None]
+
+            print(f"Optimized (x, y, z): ({solution.x[0]}, {solution.x[1]}, {solution.x[2]})")
             # Estimated lat-lon
-            lat_est, lon_est, alt_est = pm.enu2geodetic(e=x[0], n=x[1], u=x[2], **self.ref_pos)     # *****Change*****
+            lat_est, lon_est, alt_est = pm.enu2geodetic(e=solution.x[0], n=solution.x[1], u=solution.x[2], **self.ref_pos)     # *****Change*****
             print(f'Estimated latitude: {lat_est}, longitude: {lon_est}, altitude: {alt_est}')
+            
+            ############################################ Plotting in map ############################################
             if plot==True:
                 # Creating a list of results for plotting in the map
                 result = {
@@ -96,6 +112,7 @@ class Estimator_3d(Estimator):
                     os.makedirs(directory)
                 file_path = os.path.join(directory, f"{packet['deduplicationId']}.png")
                 map_plot_cartopy(result, path=file_path)
+            #############################################################################################################
 
         else:
             print('Position cannot be resolved. Not enough gws to for TDoA measurement')
@@ -106,28 +123,34 @@ class Estimator_3d(Estimator):
 
 def main():
     ##################### Testing script ###########################
-    with open('../data/tuc_lora_metadata.mqtt_data_22-27_4gw.json') as file1:
+    with open('D:/work_dir/Datasets/LoRa_anomaly-detection/data/tuc_lora_metadata.mqtt_data_22-27_4gw.json') as file1:
         ds_json = json.load(file1)
-    # ds_json = pd.read_json('data/tuc_lora_metadata.mqtt_data_13-11.json')
-    # gw_loc = pd.read_json('data/lorawan_antwerp_gateway_locations.json')
-    with open('../data/tuc_lora_gateways.json') as file2:
+    with open('D:/work_dir/Datasets/LoRa_anomaly-detection/data/tuc_lora_gateways.json') as file2:
         gw_loc = json.load(file2)
 
+    ################ Initializing the estimator ####################
+    # Reference position for the ENU to geodetic conversion
     ref_pos = {'lat0': 50.814131,
             'lon0': 12.928044,
             'h0': 320}
-    result_directory = f'results/lstsq_3D/{datetime.now().strftime('%Y-%m-%d_%H-%M')}'
+    result_dir_identifier = 'trf_exact_100sqkm' # A special identifier for the result directory 
+    result_directory = f'D:/work_dir/Datasets/LoRa_anomaly-detection/tdoa_position_solver/results/lstsq_3D/{result_dir_identifier}_{datetime.now().strftime('%Y-%m-%d_%H-%M')}'
     # Ensure the result_directory exists
     if not os.path.exists(result_directory):
         os.makedirs(result_directory)
     estimator = Estimator_3d(reference_position=ref_pos,
                              result_directory=result_directory)
+    distance_from_initial_estimation = 5000  # meters, for TRF estimator this defines the region of interest for the optimization
+    ################################################################
 
     estimated_position = []
     for packet in ds_json:
         est = estimator.estimate(packet=packet,
                                  gateways=gw_loc,
-                                 plot=False)
+                                 plot=False,
+                                 minimizing_algorithm='trf',  # 'trf' for Trust Region Reflective, 'lm' for Levenberg-Marquardt
+                                 tr_solver='exact',  # 'exact' for exact Jacobian, None for numerical Jacobian
+                                 distance_from_init_pos=distance_from_initial_estimation)  # Optional, can be None
         estimated_position.append(est)
 
     estimated_position = pd.DataFrame(estimated_position, columns=['lat', 'lon', 'alt'])
