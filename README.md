@@ -122,5 +122,3 @@ The study's workflow, depicted in Figure 2, involves data acquisition, processin
 This work was carried out as part of the **BSI-funded "Resilient Internet Of Things" (RIOT) project** (Grant ID: 01M023011C).
 
 ---
-
-Would you like to know the specific formulas used for the **Time-Difference-of-Arrival (TDoA)** method described in the paper?
