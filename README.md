@@ -25,7 +25,7 @@ Bibtext
 
 https://ieeexplore.ieee.org/abstract/document/11048384
 
-<img width="800" height="650" alt="image" src="https://github.com/user-attachments/assets/98c371e2-d6d1-4f0e-93cf-ff245cc1b4eb" />
+<img width="600" height="450" alt="image" src="https://github.com/user-attachments/assets/98c371e2-d6d1-4f0e-93cf-ff245cc1b4eb" />
 
 ## 📄 Weather-Aware LoRaWAN Sensor Localization
 
