@@ -45,6 +45,11 @@ The primary contributions of this work are:
 The proposed approach can improve state-of-the-art location methods by **23%** on the same dataset.
 
 ---
+### 📉 Estimation Methods (TDoA & Path Loss Models)
+
+For the classical multilateration techniques, specific estimation methods were employed to solve the systems of non-linear equations. TDoA-based position estimation relies on hyperbolic range difference equations 26, which are often solved using non-linear least square estimation 2727, an approach first introduced by Foy28282828. This iterative process refines an assumed initial coordinate $(x_0, y_0)$ by minimizing the sum of the squared errors from a residual function292929292929292929. The range-based estimations, which use path loss models like the Okumura-Hata model 30and the COST-231 Walfisch-Ikegami model 31, calculate the distance $d$ from the received signal strength32. Once the distances are calculated, the final position coordinates are approximated using iterative least-square estimation methods, specifically the Levenberg-Marquardt algorithm33.
+
+---
 
 ### 💡 Core Concept: Fingerprinting with Climate Data
 
@@ -105,6 +110,9 @@ The study's workflow, depicted in Figure 2, involves data acquisition, processin
 #### 4. Model Evaluation
 
 * Models were evaluated by calculating the **Haversine distance** between the predicted coordinates and the ground truth values.
+
+  <img width="484" height="556" alt="image" src="https://github.com/user-attachments/assets/870a36d8-c898-4850-a32c-86022c733b80" />
+
 
 ---
 
