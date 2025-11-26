@@ -53,24 +53,24 @@ For the classical multilateration techniques, specific estimation methods were e
 
 ### 💡 Core Concept: Fingerprinting with Climate Data
 
-Traditional GNSS-free localization methods for LoRaWAN, which operates in the sub-gigahertz spectrum, introduce non-negligible errors in localization estimation[cite: 9, 10, 11]. The proposed solution is to predict the coordinates of end devices from the pattern of signal strength variation and receiving gateway constellations at different environmental conditions.
+Traditional GNSS-free localization methods for LoRaWAN, which operates in the sub-gigahertz spectrum, introduce non-negligible errors in localization estimation. The proposed solution is to predict the coordinates of end devices from the pattern of signal strength variation and receiving gateway constellations at different environmental conditions.
 
 The performance comparison in the paper shows the superior accuracy of the proposed weather-aware fingerprinting methods (FP-wx-RF and FP-wx-KNN):
 
 | Method | Mean Error (meters) | Median Error (meters) |
 | :--- | :--- | :--- |
-| **FP-wx-RF (Proposed)** | **230**  | **112**  |
-| FP-wx-KNN (Proposed) | 263  | 137  |
-| FP-RF (Baseline) | 273  | 165  |
-| FP-KNN (Baseline) | 301  | 185  |
+| **FP-wx-RF: Random Forest Based Fingerprinting with weather data (Proposed)** | **230**  | **112**  |
+| FP-wx-KNN: KNN Based Fingerprinting with weather data (Proposed) | 263  | 137  |
+| FP-RF: Ranfom Based Fingerprinting (Baseline) | 273  | 165  |
+| FP-KNN: KNN Based Fingerprinting (Baseline) | 301  | 185  |
 | TDoA | 732  | 765  |
-| PLM-OH (Okumura-Hata) | 1,700  | 1,080  |
+| PLM-OH: Pathloss Model and RSSI based estimation (Okumura-Hata) | 1,700  | 1,080  |
 
 ---
 
 ### ⚙️ Feature Categories
 
-The features used to train the machine learning models are categorized below[cite: 273, 239, 240, 242]:
+The features used to train the machine learning models are categorized below:
 
 | Category | Features Included |
 | :--- | :--- |
