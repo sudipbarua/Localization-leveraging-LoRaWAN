@@ -9,7 +9,7 @@ DB_NAME = "tuc_lora_metadata"
 COLLECTION_NAME = "mqtt_data"
 
 # MQTT Configuration
-MQTT_BROKER = "134.109.5.110"  # Replace with your MQTT broker
+MQTT_BROKER = ""  # Replace with your MQTT broker
 MQTT_PORT = 1883  # Default MQTT port
 MQTT_TOPIC = "eu868/application/58e920e9-56d0-4ee1-8fbf-0134826738fc/device/+/event/up"  # Replace with your topic or topic pattern
 
