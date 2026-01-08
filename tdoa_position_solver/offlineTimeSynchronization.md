@@ -73,9 +73,3 @@ dev-002,gw-01,1580000001.523201,1580000001.400000,-70
 - **Reference clock:**: The algorithm computes relative offsets. Select a stable reference clock (a gateway with accurate time) or use the median offset as reference.
 - **Data sufficiency:**: The estimator requires that many packets are observed by multiple gateways; single-observation devices/gateways cannot be reliably synchronized alone.
 - **Inspect script:**: `offline_time_sync_MLE-LP.py` includes implementation details and may provide more CLI options — open it to tailor inputs and solver settings.
-
-If you want, I can:
-- add an example measurement file with synthetic data, or
-- update `offline_time_sync_MLE-LP.py` to include a `--help`-driven CLI with clearer argument parsing, or
-- run a quick test on a sample dataset in this repo and show results.
-
